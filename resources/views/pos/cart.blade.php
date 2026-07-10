@@ -1,0 +1,1 @@
+@extends('pos.sales.create')

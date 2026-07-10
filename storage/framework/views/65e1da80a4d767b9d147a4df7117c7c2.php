@@ -1,0 +1,7 @@
+<?php $__env->startSection('title','Importar tarifas'); ?>
+<?php $__env->startSection('page-title','Importar tarifas'); ?>
+<?php $__env->startSection('content'); ?>
+    <div class="card border-0 shadow-sm"><div class="card-header bg-white d-flex justify-content-between"><span class="fw-semibold">Importaciones</span><a href="<?php echo e(route('admin.shipping.imports.create')); ?>" class="btn btn-dark btn-sm">Subir archivo</a></div><table class="table mb-0"><thead><tr><th>ID</th><th>Transportista</th><th>Estado</th><th>Filas</th><th></th></tr></thead><tbody><?php $__currentLoopData = $imports; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $import): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($import->id); ?></td><td><?php echo e($import->carrier?->name); ?></td><td><?php echo e($import->status); ?></td><td><?php echo e($import->successful_rows); ?>/<?php echo e($import->total_rows); ?></td><td><a href="<?php echo e(route('admin.shipping.imports.show',$import)); ?>" class="btn btn-sm btn-outline-dark">Ver</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table></div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\shipping\imports\index.blade.php ENDPATH**/ ?>

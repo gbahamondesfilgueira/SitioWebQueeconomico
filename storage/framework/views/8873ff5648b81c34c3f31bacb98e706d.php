@@ -1,0 +1,7 @@
+<?php $__env->startSection('title', 'Devoluciones'); ?>
+<?php $__env->startSection('page-title', 'Devoluciones'); ?>
+<?php $__env->startSection('content'); ?>
+    <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Número</th><th>Pedido</th><th>Estado</th><th>Motivo</th><th></th></tr></thead><tbody><?php $__empty_1 = true; $__currentLoopData = $returns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $return): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><tr><td><?php echo e($return->return_number); ?></td><td><?php echo e($return->order?->order_number); ?></td><td><?php echo e($return->status); ?></td><td><?php echo e($return->reason); ?></td><td><a href="<?php echo e(route('admin.order-returns.show', $return)); ?>" class="btn btn-sm btn-outline-dark">Ver</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><tr><td colspan="5" class="text-center text-secondary py-4">Sin devoluciones.</td></tr><?php endif; ?></tbody></table></div></div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\order_returns\index.blade.php ENDPATH**/ ?>

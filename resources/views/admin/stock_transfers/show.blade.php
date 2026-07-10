@@ -1,0 +1,7 @@
+@extends('layouts.admin')
+@section('title','Transferencia #'.$transfer->id)
+@section('page-title','Detalle transferencia')
+@section('content')
+<div class="card border-0 shadow-sm mb-3"><div class="card-body"><p><strong>Origen:</strong> {{ $transfer->originWarehouse->name }}</p><p><strong>Destino:</strong> {{ $transfer->destinationWarehouse->name }}</p><p><strong>Estado:</strong> {{ $transfer->status }}</p><p><strong>Notas:</strong> {{ $transfer->notes }}</p>@if(auth()->user()->hasRole(['super-admin','administrador']))<div class="d-flex gap-2">@if(in_array($transfer->status,['draft','pending']))<form method="POST" action="{{ route('admin.stock-transfers.send',$transfer) }}">@csrf @method('PATCH')<button class="btn btn-warning">Enviar</button></form>@endif @if($transfer->status==='in_transit')<form method="POST" action="{{ route('admin.stock-transfers.receive',$transfer) }}">@csrf @method('PATCH')<button class="btn btn-success">Recibir</button></form>@endif</div>@endif</div></div>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Producto</th><th>Variante</th><th>Cantidad</th><th>Recibido</th></tr></thead><tbody>@foreach($transfer->items as $item)<tr><td>{{ $item->product->name }}</td><td>{{ $item->variant?->sku ?? '-' }}</td><td>{{ $item->quantity }}</td><td>{{ $item->received_quantity }}</td></tr>@endforeach</tbody></table></div></div>
+@endsection

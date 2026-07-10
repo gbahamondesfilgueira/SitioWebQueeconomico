@@ -1,0 +1,5 @@
+@extends('layouts.store')
+
+@section('content')
+    <div class="container py-4"><h1 class="h3 mb-3">Packs</h1><div class="row g-3">@forelse($packs as $display)<div class="col-md-4"><a class="card border-0 shadow-sm text-decoration-none text-dark h-100" href="{{ route('store.packs.show', $display['pack']->slug) }}"><div class="ratio ratio-16x9 bg-light">@if($display['image'])<img src="{{ $display['image'] }}" class="object-fit-cover" alt="{{ $display['pack']->name }}">@endif</div><div class="card-body"><h2 class="h5">{{ $display['pack']->name }}</h2><div><span class="text-decoration-line-through text-secondary">${{ number_format($display['normal_price'], 0, ',', '.') }}</span> <span class="fs-4 fw-bold text-danger">${{ number_format($display['pack_price'], 0, ',', '.') }}</span></div><div class="small text-secondary">Ahorro ${{ number_format($display['saving'], 0, ',', '.') }} · {{ $display['stock_label'] }}</div></div></a></div>@empty<div class="col-12 text-secondary">No hay packs visibles.</div>@endforelse</div></div>
+@endsection

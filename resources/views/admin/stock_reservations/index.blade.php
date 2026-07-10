@@ -1,0 +1,6 @@
+@extends('layouts.admin')
+@section('title','Reservas')
+@section('page-title','Reservas de stock')
+@section('content')
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>#</th><th>Producto</th><th>Variante</th><th>Bodega</th><th>Cantidad</th><th>Estado</th><th>Expira</th><th></th></tr></thead><tbody>@forelse($reservations as $reservation)<tr><td>{{ $reservation->id }}</td><td>{{ $reservation->product->name }}</td><td>{{ $reservation->variant?->sku ?? '-' }}</td><td>{{ $reservation->warehouse->name }}</td><td>{{ $reservation->quantity }}</td><td>{{ $reservation->status }}</td><td>{{ $reservation->expires_at?->format('d/m/Y H:i') ?? '-' }}</td><td class="text-end">@if($reservation->status==='active')<div class="btn-group"><form method="POST" action="{{ route('admin.stock-reservations.release',$reservation) }}">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-warning">Liberar</button></form><form method="POST" action="{{ route('admin.stock-reservations.consume',$reservation) }}">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-success">Consumir</button></form></div>@endif</td></tr>@empty<tr><td colspan="8" class="text-center text-secondary py-4">Sin reservas.</td></tr>@endforelse</tbody></table></div></div>
+@endsection

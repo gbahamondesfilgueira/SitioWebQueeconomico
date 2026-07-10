@@ -1,0 +1,6 @@
+<?php $__env->startSection('title', 'Mi Lista de Deseos'); ?>
+<?php $__env->startSection('content'); ?>
+    <div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Mi Lista de Deseos</div><div class="list-group list-group-flush"><?php $__empty_1 = true; $__currentLoopData = $customer->wishlistItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><div class="list-group-item d-flex justify-content-between"><span><?php echo e($item->product?->name); ?> <?php echo e($item->variant?->name); ?></span><span class="text-secondary"><?php echo e($item->notes); ?></span></div><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><div class="list-group-item text-secondary">Sin productos en lista de deseos.</div><?php endif; ?></div></div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.account', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\account\wishlist.blade.php ENDPATH**/ ?>

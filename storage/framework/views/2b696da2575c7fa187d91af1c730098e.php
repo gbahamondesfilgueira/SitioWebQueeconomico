@@ -1,0 +1,7 @@
+<?php $__env->startSection('title','Logs de integración'); ?>
+<?php $__env->startSection('content'); ?>
+<h1 class="h4 mb-3">Logs de integración</h1>
+<div class="card"><div class="card-body table-responsive"><table class="table"><thead><tr><th>Integración</th><th>Evento</th><th>Estado</th><th>Endpoint</th><th>Fecha</th><th></th></tr></thead><tbody><?php $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($log->integration?->name); ?></td><td><?php echo e($log->event_type); ?></td><td><?php echo e($log->status); ?></td><td><?php echo e($log->endpoint); ?></td><td><?php echo e($log->created_at); ?></td><td><a class="btn btn-sm btn-outline-primary" href="<?php echo e(route('admin.integration-logs.show',$log)); ?>">Ver</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table><?php echo e($logs->links()); ?></div></div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\logs\index.blade.php ENDPATH**/ ?>

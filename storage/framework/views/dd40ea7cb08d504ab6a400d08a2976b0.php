@@ -1,0 +1,18 @@
+<form method="POST" action="<?php echo e($action); ?>" class="card">
+<?php echo csrf_field(); ?> <?php if($method !== 'POST'): ?> <?php echo method_field($method); ?> <?php endif; ?>
+<div class="card-body row g-3">
+<div class="col-md-6"><label class="form-label">Nombre</label><input name="name" value="<?php echo e(old('name', $integration->name)); ?>" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label">Código</label><input name="code" value="<?php echo e(old('code', $integration->code)); ?>" class="form-control" required></div>
+<div class="col-md-4"><label class="form-label">Tipo</label><select name="provider_type" class="form-select"><?php $__currentLoopData = ['ecommerce','marketplace','payment','shipping','accounting','erp','custom_api']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $type): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($type); ?>" <?php if(old('provider_type',$integration->provider_type)===$type): echo 'selected'; endif; ?>><?php echo e($type); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+<div class="col-md-4"><label class="form-label">Proveedor</label><input name="provider_name" value="<?php echo e(old('provider_name', $integration->provider_name)); ?>" class="form-control" required></div>
+<div class="col-md-2"><label class="form-label">Ambiente</label><select name="environment" class="form-select"><option value="sandbox" <?php if(old('environment',$integration->environment)==='sandbox'): echo 'selected'; endif; ?>>sandbox</option><option value="production" <?php if(old('environment',$integration->environment)==='production'): echo 'selected'; endif; ?>>production</option></select></div>
+<div class="col-md-2"><label class="form-label">Estado</label><select name="status" class="form-select"><?php $__currentLoopData = ['inactive','active','error','suspended']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $status): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($status); ?>" <?php if(old('status',$integration->status)===$status): echo 'selected'; endif; ?>><?php echo e($status); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+<div class="col-12"><label class="form-label">Base URL</label><input name="base_url" value="<?php echo e(old('base_url', $integration->base_url)); ?>" class="form-control"></div>
+<div class="col-md-6"><label class="form-label">API Key</label><input name="api_key" class="form-control"></div>
+<div class="col-md-6"><label class="form-label">API Secret</label><input name="api_secret" class="form-control"></div>
+<div class="col-md-6"><label class="form-label">Access token</label><input name="access_token" class="form-control"></div>
+<div class="col-md-6"><label class="form-label">Webhook secret</label><input name="webhook_secret" class="form-control"></div>
+<div class="col-12"><label class="form-label">Descripción</label><textarea name="description" class="form-control"><?php echo e(old('description', $integration->description)); ?></textarea></div>
+<div class="col-12"><label class="form-check"><input type="checkbox" name="is_active" value="1" class="form-check-input" <?php if(old('is_active',$integration->is_active)): echo 'checked'; endif; ?>> Activa</label></div>
+</div><div class="card-footer text-end"><button class="btn btn-primary">Guardar</button></div></form>
+<?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\form.blade.php ENDPATH**/ ?>

@@ -1,0 +1,3 @@
+@extends('layouts.admin')
+@section('title','Jobs de sincronización')
+@section('content')<h1 class="h4 mb-3">Jobs de sincronización</h1><div class="card"><div class="card-body table-responsive"><table class="table"><thead><tr><th>Integración</th><th>Tipo</th><th>Estado</th><th>Intentos</th><th>Fecha</th><th></th></tr></thead><tbody>@foreach($jobs as $job)<tr><td>{{ $job->integration?->name }}</td><td>{{ $job->job_type }}</td><td>{{ $job->status }}</td><td>{{ $job->attempts }}/{{ $job->max_attempts }}</td><td>{{ $job->created_at }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.sync-jobs.show',$job) }}">Ver</a></td></tr>@endforeach</tbody></table>{{ $jobs->links() }}</div></div>@endsection

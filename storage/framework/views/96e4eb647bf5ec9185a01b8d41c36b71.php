@@ -1,0 +1,4 @@
+<?php $__env->startSection('title','Crear mapeo'); ?>
+<?php $__env->startSection('content'); ?><h1 class="h4 mb-3">Crear mapeo de producto</h1><?php echo $__env->make('admin.integrations.product_mappings.form',['action'=>route('admin.external-product-mappings.store'),'method'=>'POST','mapping'=>new \App\Models\ExternalProductMapping()], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\product_mappings\create.blade.php ENDPATH**/ ?>

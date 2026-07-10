@@ -1,0 +1,3 @@
+@extends('layouts.admin')
+@section('title','Webhooks')
+@section('content')<h1 class="h4 mb-3">Webhooks recibidos</h1><div class="card"><div class="card-body table-responsive"><table class="table"><thead><tr><th>Origen</th><th>Evento</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody>@foreach($events as $event)<tr><td>{{ $event->event_source }}</td><td>{{ $event->event_type }}</td><td>{{ $event->status }}</td><td>{{ $event->created_at }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.webhook-events.show',$event) }}">Ver</a></td></tr>@endforeach</tbody></table>{{ $events->links() }}</div></div>@endsection

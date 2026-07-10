@@ -1,0 +1,4 @@
+<?php $__env->startSection('title','Editar integración'); ?>
+<?php $__env->startSection('content'); ?><h1 class="h4 mb-3">Editar integración</h1><?php echo $__env->make('admin.integrations.form',['action'=>route('admin.integrations.update',$integration),'method'=>'PUT'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\edit.blade.php ENDPATH**/ ?>

@@ -1,0 +1,41 @@
+# Checklist produccion
+
+- [ ] `APP_ENV=production`
+- [ ] `APP_DEBUG=false`
+- [ ] `APP_KEY` configurada
+- [ ] `APP_URL` con HTTPS real
+- [ ] Base de datos conectada
+- [ ] Migraciones ejecutadas con `php artisan migrate --force`
+- [ ] Seeders base ejecutados si aplica
+- [ ] `storage:link` creado
+- [ ] Permisos `storage` y `bootstrap/cache` correctos
+- [ ] `composer install --no-dev --optimize-autoloader` ejecutado
+- [ ] `npm ci` ejecutado si se compila en servidor
+- [ ] `npm run build` ejecutado
+- [ ] `php artisan config:cache` ejecutado
+- [ ] `php artisan route:cache` ejecutado
+- [ ] `php artisan view:cache` ejecutado
+- [ ] `php artisan event:cache` ejecutado
+- [ ] Queue worker configurado
+- [ ] Cron configurado para `php artisan schedule:run`
+- [ ] Backups configurados fuera de `public`
+- [ ] Mail configurado y probado
+- [ ] Logs revisados
+- [ ] HTTPS activo
+- [ ] Headers de seguridad activos
+- [ ] Credenciales reales fuera del repositorio
+- [ ] `.env.example` sin credenciales reales
+- [ ] `.env.production.example` usado como base del `.env` real
+- [ ] `SESSION_ENCRYPT=true`
+- [ ] `SESSION_SECURE_COOKIE=true` si hay HTTPS
+- [ ] `LOG_LEVEL=warning` o superior
+- [ ] Document root apuntando a `/public`
+- [ ] `.htaccess` raiz activo si el hosting apunta a la raiz del proyecto
+- [ ] Backups no descargables fuera del panel admin
+- [ ] Importaciones administrativas no guardadas en disco publico
+- [ ] `composer audit` sin advisories conocidas
+- [ ] `npm audit --audit-level=moderate` sin vulnerabilidades
+- [ ] API rechaza requests sin token
+- [ ] Webhooks con throttle y secretos configurados en integraciones productivas
+- [ ] Usuario admin creado
+- [ ] Contrasena admin cambiada

@@ -1,0 +1,13 @@
+<form method="POST" action="<?php echo e($action); ?>" class="card"><?php echo csrf_field(); ?> <?php if($method!=='POST'): ?> <?php echo method_field($method); ?> <?php endif; ?>
+<div class="card-body row g-3">
+<?php if($method==='POST'): ?>
+<div class="col-md-6"><label class="form-label">Integración</label><select name="integration_id" class="form-select"><?php $__currentLoopData = $integrations; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $integration): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($integration->id); ?>"><?php echo e($integration->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+<div class="col-md-6"><label class="form-label">Producto</label><select name="product_id" class="form-select"><?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($product->id); ?>"><?php echo e($product->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+<?php endif; ?>
+<div class="col-md-6"><label class="form-label">ID producto externo</label><input name="external_product_id" value="<?php echo e(old('external_product_id',$mapping->external_product_id ?? '')); ?>" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label">ID variante externa</label><input name="external_variant_id" value="<?php echo e(old('external_variant_id',$mapping->external_variant_id ?? '')); ?>" class="form-control"></div>
+<div class="col-md-6"><label class="form-label">SKU externo</label><input name="external_sku" value="<?php echo e(old('external_sku',$mapping->external_sku ?? '')); ?>" class="form-control"></div>
+<div class="col-md-3"><label class="form-check mt-4"><input type="checkbox" name="sync_stock" value="1" class="form-check-input" <?php if(old('sync_stock',$mapping->sync_stock ?? true)): echo 'checked'; endif; ?>> Sync stock</label></div>
+<div class="col-md-3"><label class="form-check mt-4"><input type="checkbox" name="sync_price" value="1" class="form-check-input" <?php if(old('sync_price',$mapping->sync_price ?? true)): echo 'checked'; endif; ?>> Sync precio</label></div>
+</div><div class="card-footer text-end"><button class="btn btn-primary">Guardar</button></div></form>
+<?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\product_mappings\form.blade.php ENDPATH**/ ?>
