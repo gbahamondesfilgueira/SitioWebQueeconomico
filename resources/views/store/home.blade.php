@@ -5,24 +5,62 @@
         <div class="container-fluid px-0">
             <div id="homeHero" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner overflow-hidden">
+
                     <div class="carousel-item active">
-                        <a href="{{ route('store.shop', ['q' => 'Bota con chiporro']) }}" class="qe-home-image-slide">
-                            <img src="{{ asset('images/home/slider1.png') }}" alt="Cyberday bota con chiporro">
-                        </a>
+                        <div class="qe-home-image-slide">
+                            <img
+                                src="{{ asset('images/home/botas-slider-home.png') }}"
+                                alt="Botas"
+                            >
+                        </div>
                     </div>
+
                     <div class="carousel-item">
-                        <a href="{{ route('store.shop', ['q' => 'Crocs con chiporro']) }}" class="qe-home-image-slide">
-                            <img src="{{ asset('images/home/slider2.png') }}" alt="Cyberday crocs con chiporro">
-                        </a>
+                        <div class="qe-home-image-slide">
+                            <img
+                                src="{{ asset('images/home/polerones-slider-home.png') }}"
+                                alt="Polerones"
+                            >
+                        </div>
                     </div>
+
                     <div class="carousel-item">
-                        <a href="{{ route('store.shop', ['q' => 'Botas de impacto']) }}" class="qe-home-image-slide">
-                            <img src="{{ asset('images/home/slider3.png') }}" alt="Cyberday botas de impacto">
-                        </a>
+                        <div class="qe-home-image-slide">
+                            <img
+                                src="{{ asset('images/home/aros-slider-home.png') }}"
+                                alt="Aros"
+                            >
+                        </div>
                     </div>
+
+                    <div class="carousel-item">
+                        <div class="qe-home-image-slide">
+                            <img
+                                src="{{ asset('images/home/crocs-slider-home.png') }}"
+                                alt="Crocs"
+                            >
+                        </div>
+                    </div>
+
                 </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#homeHero" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
-                <button class="carousel-control-next" type="button" data-bs-target="#homeHero" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+
+                <button
+                    class="carousel-control-prev"
+                    type="button"
+                    data-bs-target="#homeHero"
+                    data-bs-slide="prev"
+                >
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+
+                <button
+                    class="carousel-control-next"
+                    type="button"
+                    data-bs-target="#homeHero"
+                    data-bs-slide="next"
+                >
+                    <span class="carousel-control-next-icon"></span>
+                </button>
             </div>
         </div>
     </section>
@@ -53,17 +91,17 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <a href="{{ route('store.shop', ['q' => 'Polerones']) }}" class="qe-promo-tile">
-                    <img src="{{ asset('images/home/slider3.png') }}" alt="Botas de impacto">
+                  <img src="{{ asset('images/home/botas-home-33.png') }}" alt="Botas">
                 </a>
             </div>
             <div class="col-md-4">
                 <a href="{{ route('store.shop', ['q' => 'Botas']) }}" class="qe-promo-tile">
-                    <img src="{{ asset('images/home/slider1.png') }}" alt="Botas con chiporro">
+                    <img src="{{ asset('images/home/crocs -home-33.png') }}" alt="Crocs">
                 </a>
             </div>
             <div class="col-md-4">
                 <a href="{{ route('store.shop', ['q' => 'Invierno']) }}" class="qe-promo-tile">
-                    <img src="{{ asset('images/home/slider2.png') }}" alt="Crocs con chiporro">
+                    <img src="{{ asset('images/home/polerones-home-33.png') }}" alt="Polerones">
                 </a>
             </div>
         </div>

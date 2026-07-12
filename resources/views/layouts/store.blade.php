@@ -115,6 +115,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/que-economico-logo.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('images/que-economico-logo.png') }}">
     <x-store.seo :seo="$seo ?? []" />
     @if ($setting->google_search_console_verification)
         <meta name="google-site-verification" content="{{ $setting->google_search_console_verification }}">
@@ -189,6 +191,7 @@
 
         <nav class="qe-store-nav d-none d-lg-block">
             <div class="container d-flex align-items-center gap-4 py-2 small fw-semibold">
+                <a href="{{ url('/') }}">Home</a>
                 <a href="{{ route('store.shop') }}">Tienda</a>
                 <a href="{{ route('store.packs.index') }}">Packs</a>
                 @foreach($menuCategories->take(6) as $category)
@@ -198,6 +201,8 @@
             </div>
         </nav>
         <nav class="qe-mobile-quick-nav d-lg-none">
+            <a href="{{ url('/') }}">Home</a>
+
             <a href="{{ route('store.shop') }}">Tienda</a>
             <a href="{{ route('store.shop', ['offer' => 1]) }}">Ofertas</a>
             <button type="button" data-bs-toggle="offcanvas" data-bs-target="#catalogOffcanvas" aria-controls="catalogOffcanvas">Categorias</button>
