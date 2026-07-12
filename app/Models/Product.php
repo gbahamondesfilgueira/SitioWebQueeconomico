@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
-    use HasAutoSlug, HasProductPricingAndWeight, SoftDeletes;
+    use HasFactory, HasAutoSlug, HasProductPricingAndWeight, SoftDeletes;
 
     protected $fillable = [
         'category_id', 'brand_id', 'supplier_id', 'tax_id', 'origin_country_id',

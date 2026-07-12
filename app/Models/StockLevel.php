@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockLevel extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['warehouse_id', 'warehouse_location_id', 'product_id', 'product_variant_id', 'physical_stock', 'reserved_stock', 'minimum_stock', 'maximum_stock'];
     protected function casts(): array { return ['physical_stock' => 'integer', 'reserved_stock' => 'integer', 'minimum_stock' => 'integer', 'maximum_stock' => 'integer']; }
     public function getAvailableStockAttribute(): int { return max(0, (int) $this->physical_stock - (int) $this->reserved_stock); }
