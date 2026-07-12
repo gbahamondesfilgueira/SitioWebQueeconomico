@@ -42,7 +42,17 @@
                         <tr>
                             <td>
                                 @if ($primary)
-                                    <img src="{{ asset('storage/'.$primary->image_path) }}" alt="{{ $product->name }}" width="52" height="52" class="rounded object-fit-cover">
+                                    <img
+    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(
+        str_starts_with(ltrim($primary->image_path, '/'), 'storage/')
+            ? substr(ltrim($primary->image_path, '/'), strlen('storage/'))
+            : ltrim($primary->image_path, '/')
+    ) }}"
+    alt="{{ $product->name }}"
+    width="52"
+    height="52"
+    class="rounded object-fit-cover"
+>
                                 @else
                                     <span class="badge text-bg-light"><i class="bi bi-image"></i></span>
                                 @endif

@@ -1,3 +1,4 @@
+
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm mb-3">
@@ -57,7 +58,21 @@
                 <div class="form-check form-switch mb-3"><input class="form-check-input" id="is_active" name="is_active" type="checkbox" value="1" @checked(old('is_active', $variant->exists ? $variant->is_active : true))><label class="form-check-label" for="is_active">Activo</label></div>
                 <label class="form-label" for="image">Imagen variante</label>
                 <input class="form-control" id="image" name="image" type="file" accept=".jpg,.jpeg,.png,.webp">
-                @if ($variant->image_path)<img src="{{ asset('storage/'.$variant->image_path) }}" class="img-fluid rounded mt-3" alt="Variante">@endif
+                @if ($variant->image_path)
+    @php
+        $variantImage = ltrim($variant->image_path, '/');
+
+        if (str_starts_with($variantImage, 'storage/')) {
+            $variantImage = substr($variantImage, strlen('storage/'));
+        }
+    @endphp
+
+    <img
+        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($variantImage) }}"
+        class="img-fluid rounded mt-3"
+        alt="Variante"
+    >
+@endif
             </div>
         </div>
         <div class="d-grid gap-2">

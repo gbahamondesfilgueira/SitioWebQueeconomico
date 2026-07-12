@@ -1,6 +1,30 @@
 @php
-    $primaryImage = old('selected_primary_image_path', optional($product->images->firstWhere('is_primary', true))->image_path);
-    $selectedGallery = collect(old('gallery_image_paths', $product->images->pluck('image_path')->all()));
+    $primaryImage = old(
+        'selected_primary_image_path',
+        optional($product->images->firstWhere('is_primary', true))->image_path
+    );
+
+    $selectedGallery = collect(
+        old('gallery_image_paths', $product->images->pluck('image_path')->all())
+    );
+
+    $mediaUrl = function (?string $path): ?string {
+        if (! $path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+    };
 @endphp
 
 <div class="row g-3">
@@ -174,7 +198,7 @@
 
                 <div class="border rounded bg-light p-2 text-center mb-3" data-primary-media-preview>
                     @if($primaryImage)
-                        <img src="{{ asset('storage/'.$primaryImage) }}" class="img-fluid rounded" alt="Imagen principal">
+                    <img src="{{ $mediaUrl($primaryImage) }}" class="img-fluid rounded" alt="Imagen principal">
                     @else
                         <span class="text-secondary small">Sin imagen principal seleccionada</span>
                     @endif
@@ -194,7 +218,7 @@
                         @foreach ($product->images as $image)
                             <div class="col-6">
                                 <div class="border rounded p-2 h-100">
-                                    <img src="{{ asset('storage/'.$image->image_path) }}" class="img-fluid rounded mb-2" alt="{{ $image->alt_text }}">
+                                    <img src="{{ $mediaUrl($image->image_path) }}" class="img-fluid rounded mb-2" alt="{{ $image->alt_text }}">
                                     @if($image->is_primary)
                                         <span class="badge text-bg-success">Principal</span>
                                     @endif
@@ -222,8 +246,8 @@
                         <div class="row g-3">
                             @forelse($mediaImages as $path)
                                 <div class="col-6 col-md-3">
-                                    <button class="btn p-1 border w-100 qe-media-pick" type="button" data-media-primary="{{ $path }}" data-media-url="{{ asset('storage/'.$path) }}" data-bs-dismiss="modal">
-                                        <img src="{{ asset('storage/'.$path) }}" class="img-fluid rounded" alt="">
+                                    <button class="btn p-1 border w-100 qe-media-pick" type="button" data-media-primary="{{ $path }}" data-media-url="{{ $mediaUrl($path) }}" data-bs-dismiss="modal">
+                                        <img src="{{ $mediaUrl($path) }}" class="img-fluid rounded" alt="">
                                     </button>
                                 </div>
                             @empty
@@ -253,7 +277,7 @@
                                 <div class="col-6 col-md-3">
                                     <label class="qe-media-checkbox border rounded p-2 w-100 h-100">
                                         <input type="checkbox" name="gallery_image_paths[]" value="{{ $path }}" class="form-check-input me-1" @checked($selectedGallery->contains($path))>
-                                        <img src="{{ asset('storage/'.$path) }}" class="img-fluid rounded mt-2" alt="">
+                                        <img src="{{ $mediaUrl($path) }}" class="img-fluid rounded mt-2" alt="">
                                     </label>
                                 </div>
                             @empty

@@ -98,7 +98,17 @@ class ProductDisplayService
             return null;
         }
 
-        return str_starts_with($path, 'http://') || str_starts_with($path, 'https://') ? $path : Storage::url($path);
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     public function variantsForFrontend(Product $product): array
