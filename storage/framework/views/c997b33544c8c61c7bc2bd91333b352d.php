@@ -1,4 +1,0 @@
-<?php $__env->startSection('title','Detalle webhook'); ?>
-<?php $__env->startSection('content'); ?><h1 class="h4">Webhook #<?php echo e($event->id); ?></h1><div class="card"><div class="card-body"><p><strong>Estado:</strong> <?php echo e($event->status); ?></p><p><strong>Error:</strong> <?php echo e($event->error_message); ?></p><pre><?php echo e(json_encode($event->payload, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)); ?></pre></div></div><?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\webhooks\show.blade.php ENDPATH**/ ?>

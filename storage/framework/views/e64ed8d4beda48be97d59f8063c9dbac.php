@@ -1,8 +1,0 @@
-<?php $__env->startSection('title',$pack->name); ?>
-<?php $__env->startSection('page-title','Detalle pack'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="card border-0 shadow-sm mb-3"><div class="card-body"><h1 class="h4"><?php echo e($pack->name); ?></h1><p><?php echo e($pack->description); ?></p><p><strong>Precio pack:</strong> $<?php echo e(number_format($pack->pack_price,0,',','.')); ?></p><p><strong>Stock calculado:</strong> <?php echo e($pack->getAvailableStock()); ?></p><a class="btn btn-primary" href="<?php echo e(route('admin.product-packs.edit',$pack)); ?>">Editar</a></div></div>
-<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Producto</th><th>Variante</th><th>Cantidad</th></tr></thead><tbody><?php $__currentLoopData = $pack->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($item->product->name); ?></td><td><?php echo e($item->variant?->sku ?? '-'); ?></td><td><?php echo e($item->quantity); ?></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\product_packs\show.blade.php ENDPATH**/ ?>

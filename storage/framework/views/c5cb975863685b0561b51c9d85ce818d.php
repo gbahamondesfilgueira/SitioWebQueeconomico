@@ -1,5 +1,0 @@
-<?php $__env->startSection('title','Detalle stock'); ?>
-<?php $__env->startSection('page-title','Detalle stock'); ?>
-<?php $__env->startSection('content'); ?><div class="card border-0 shadow-sm"><div class="card-body"><dl class="row mb-0"><dt class="col-sm-3">Producto</dt><dd class="col-sm-9"><?php echo e($level->product->name); ?></dd><dt class="col-sm-3">Bodega</dt><dd class="col-sm-9"><?php echo e($level->warehouse->name); ?></dd><dt class="col-sm-3">Físico</dt><dd class="col-sm-9"><?php echo e($level->physical_stock); ?></dd><dt class="col-sm-3">Reservado</dt><dd class="col-sm-9"><?php echo e($level->reserved_stock); ?></dd><dt class="col-sm-3">Disponible</dt><dd class="col-sm-9"><?php echo e($level->available_stock); ?></dd></dl></div></div><?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\stock\show.blade.php ENDPATH**/ ?>

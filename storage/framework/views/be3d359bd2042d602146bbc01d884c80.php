@@ -1,7 +1,0 @@
-<?php $__env->startSection('title','Subir tarifas'); ?>
-<?php $__env->startSection('page-title','Subir tarifas'); ?>
-<?php $__env->startSection('content'); ?>
-    <form method="POST" action="<?php echo e(route('admin.shipping.imports.store')); ?>" enctype="multipart/form-data" class="card border-0 shadow-sm"><?php echo csrf_field(); ?><div class="card-body row g-3"><div class="col-md-4"><label class="form-label">Transportista</label><select name="shipping_carrier_id" class="form-select"><?php $__currentLoopData = $carriers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $carrier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($carrier->id); ?>"><?php echo e($carrier->name); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div><div class="col-md-8"><label class="form-label">CSV/XLSX</label><input type="file" name="file" class="form-control" required></div></div><div class="card-footer bg-white text-end"><button class="btn btn-dark">Subir</button></div></form>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\shipping\imports\create.blade.php ENDPATH**/ ?>

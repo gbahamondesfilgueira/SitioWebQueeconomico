@@ -1,7 +1,0 @@
-<?php $__env->startSection('title','Ajuste #'.$adjustment->id); ?>
-<?php $__env->startSection('page-title','Detalle de ajuste'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="card border-0 shadow-sm"><div class="card-body"><p><strong>Producto:</strong> <?php echo e($adjustment->product->name); ?></p><p><strong>Bodega:</strong> <?php echo e($adjustment->warehouse->name); ?></p><p><strong>Cantidad:</strong> <?php echo e($adjustment->quantity); ?></p><p><strong>Estado:</strong> <?php echo e($adjustment->status); ?></p><p><strong>Notas:</strong> <?php echo e($adjustment->notes); ?></p><?php if($adjustment->status==='pending' && auth()->user()->hasRole(['super-admin','administrador'])): ?><div class="d-flex gap-2"><form method="POST" action="<?php echo e(route('admin.stock-adjustments.approve',$adjustment)); ?>"><?php echo csrf_field(); ?> <?php echo method_field('PATCH'); ?><button class="btn btn-success">Aprobar</button></form><form method="POST" action="<?php echo e(route('admin.stock-adjustments.reject',$adjustment)); ?>"><?php echo csrf_field(); ?> <?php echo method_field('PATCH'); ?><button class="btn btn-outline-danger">Rechazar</button></form></div><?php endif; ?></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\stock_adjustments\show.blade.php ENDPATH**/ ?>

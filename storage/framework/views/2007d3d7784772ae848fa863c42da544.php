@@ -1,8 +1,0 @@
-<?php $__env->startSection('title','Ajustes'); ?>
-<?php $__env->startSection('page-title','Ajustes de inventario'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="d-flex justify-content-between mb-3"><h1 class="h4">Ajustes</h1><a class="btn btn-primary" href="<?php echo e(route('admin.stock-adjustments.create')); ?>">Crear ajuste</a></div>
-<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>#</th><th>Producto</th><th>Bodega</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Estado</th><th></th></tr></thead><tbody><?php $__currentLoopData = $adjustments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $adjustment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($adjustment->id); ?></td><td><?php echo e($adjustment->product->name); ?></td><td><?php echo e($adjustment->warehouse->name); ?></td><td><?php echo e($adjustment->adjustment_type); ?></td><td><?php echo e($adjustment->quantity); ?></td><td><?php echo e($adjustment->reason); ?></td><td><?php echo e($adjustment->status); ?></td><td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?php echo e(route('admin.stock-adjustments.show',$adjustment)); ?>">Ver</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\stock_adjustments\index.blade.php ENDPATH**/ ?>

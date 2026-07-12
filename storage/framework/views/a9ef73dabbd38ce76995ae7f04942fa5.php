@@ -1,9 +1,0 @@
-<?php $__env->startSection('title','Kardex'); ?>
-<?php $__env->startSection('page-title','Kardex / Movimientos'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Variante</th><th>Bodega</th><th>Cantidad</th><th>Anterior</th><th>Nuevo</th><th>Usuario</th></tr></thead><tbody>
-<?php $__empty_1 = true; $__currentLoopData = $movements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $movement): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><tr><td><?php echo e($movement->created_at?->format('d/m/Y H:i')); ?></td><td><span class="badge text-bg-light"><?php echo e($movement->movement_type); ?></span></td><td><?php echo e($movement->product->name); ?></td><td><?php echo e($movement->variant?->sku ?? '-'); ?></td><td><?php echo e($movement->warehouse->name); ?></td><td><?php echo e($movement->quantity); ?></td><td><?php echo e($movement->previous_stock); ?></td><td><?php echo e($movement->new_stock); ?></td><td><?php echo e($movement->user?->name ?? 'Sistema'); ?></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><tr><td colspan="9" class="text-center text-secondary py-4">Sin movimientos.</td></tr><?php endif; ?>
-</tbody></table></div><?php if($movements->hasPages()): ?><div class="card-footer bg-white"><?php echo e($movements->links()); ?></div><?php endif; ?></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\stock_movements\index.blade.php ENDPATH**/ ?>

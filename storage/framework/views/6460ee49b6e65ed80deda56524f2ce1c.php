@@ -1,8 +1,0 @@
-<?php $__env->startSection('title','Ubicaciones'); ?>
-<?php $__env->startSection('page-title','Ubicaciones'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="d-flex justify-content-between mb-3"><h1 class="h4"><?php echo e($warehouse->name); ?> / Ubicaciones</h1><a class="btn btn-primary" href="<?php echo e(route('admin.warehouses.locations.create',$warehouse)); ?>">Crear ubicación</a></div>
-<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Nombre</th><th>Código</th><th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody><?php $__currentLoopData = $warehouse->locations; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $location): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($location->name); ?></td><td><?php echo e($location->code); ?></td><td><?php echo e($location->description); ?></td><td><?php echo e($location->is_active?'Activa':'Inactiva'); ?></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="<?php echo e(route('admin.warehouses.locations.edit',[$warehouse,$location])); ?>">Editar</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\warehouses\locations\index.blade.php ENDPATH**/ ?>

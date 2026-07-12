@@ -1,6 +1,0 @@
-<?php $__env->startSection('title', 'Mis Favoritos'); ?>
-<?php $__env->startSection('content'); ?>
-    <div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Mis Favoritos</div><div class="list-group list-group-flush"><?php $__empty_1 = true; $__currentLoopData = $customer->favorites; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $favorite): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><div class="list-group-item"><?php echo e($favorite->product?->name); ?> <?php echo e($favorite->variant?->name); ?></div><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><div class="list-group-item text-secondary">Sin favoritos todavía.</div><?php endif; ?></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.account', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\account\favorites.blade.php ENDPATH**/ ?>

@@ -1,7 +1,0 @@
-<?php $__env->startSection('title','API Clients'); ?>
-<?php $__env->startSection('content'); ?>
-<div class="d-flex justify-content-between mb-3"><h1 class="h4">API Clients</h1><a class="btn btn-primary" href="<?php echo e(route('admin.api-clients.create')); ?>">Nuevo API Client</a></div>
-<div class="card"><div class="card-body table-responsive"><table class="table"><thead><tr><th>Nombre</th><th>Código</th><th>Activo</th><th>Último uso</th><th></th></tr></thead><tbody><?php $__currentLoopData = $clients; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $client): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><tr><td><?php echo e($client->name); ?></td><td><?php echo e($client->code); ?></td><td><?php echo e($client->is_active ? 'Sí' : 'No'); ?></td><td><?php echo e($client->last_used_at); ?></td><td><a class="btn btn-sm btn-outline-primary" href="<?php echo e(route('admin.api-clients.show',$client)); ?>">Ver</a></td></tr><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></tbody></table><?php echo e($clients->links()); ?></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.admin', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\admin\integrations\api_clients\index.blade.php ENDPATH**/ ?>

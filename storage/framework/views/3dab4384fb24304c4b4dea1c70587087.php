@@ -1,6 +1,0 @@
-<?php $__env->startSection('title', 'Mis Puntos'); ?>
-<?php $__env->startSection('content'); ?>
-    <div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Mis Puntos: <?php echo e(number_format((float) $customer->reward_points, 0, ',', '.')); ?></div><div class="list-group list-group-flush"><?php $__empty_1 = true; $__currentLoopData = $customer->rewardTransactions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><div class="list-group-item"><?php echo e($tx->created_at?->format('d/m/Y H:i')); ?> · <?php echo e($tx->type); ?> · <?php echo e($tx->points); ?> · <?php echo e($tx->description); ?></div><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><div class="list-group-item text-secondary">Sin movimientos de puntos.</div><?php endif; ?></div></div>
-<?php $__env->stopSection(); ?>
-
-<?php echo $__env->make('layouts.account', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Aplicaciones con c#\SitioWebQueeconomico\resources\views\account\rewards.blade.php ENDPATH**/ ?>
