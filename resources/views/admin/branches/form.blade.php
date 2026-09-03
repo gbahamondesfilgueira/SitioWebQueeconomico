@@ -4,7 +4,7 @@
     <div class="col-md-4"><label class="form-label">Nombre</label><input name="name" value="{{ old('name', $branch->name) }}" class="form-control" required></div>
     <div class="col-md-4"><label class="form-label">Código</label><input name="code" value="{{ old('code', $branch->code) }}" class="form-control" required></div>
     <div class="col-md-6"><label class="form-label">Dirección</label><input name="address" value="{{ old('address', $branch->address) }}" class="form-control"></div>
-    <div class="col-md-3"><label class="form-label">Región</label><input name="region" value="{{ old('region', $branch->region) }}" class="form-control"></div>
+    <div class="col-md-3"><label class="form-label" for="region">Región</label><x-region-select :value="$branch->region" /></div>
     <div class="col-md-3"><label class="form-label">Comuna</label><input name="commune" value="{{ old('commune', $branch->commune) }}" class="form-control"></div>
     <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="email" value="{{ old('email', $branch->email) }}" class="form-control"></div>
     <div class="col-md-6"><label class="form-label">Teléfono</label><input name="phone" value="{{ old('phone', $branch->phone) }}" class="form-control"></div>

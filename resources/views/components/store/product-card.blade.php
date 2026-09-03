@@ -14,17 +14,33 @@
         <a href="{{ route('store.products.show', $product->slug) }}" class="text-dark text-decoration-none fw-semibold">{{ $product->name }}</a>
         <div class="mt-2"><x-store.price :display="$display" /></div>
         <div class="mt-2"><span class="badge {{ $display['stock_class'] }}">{{ $display['stock_label'] }}</span></div>
+        @if($display['show_local_stock'] ?? false)
+            <div class="small text-secondary mt-2">
+                Cerca de ti ({{ $display['local_stock_region'] }}):
+                <span class="badge {{ $display['local_stock_class'] }}">{{ $display['local_stock_label'] }}</span>
+                @if($display['local_stock_warehouse'])<span class="d-block">{{ $display['local_stock_warehouse'] }}</span>@endif
+            </div>
+        @endif
+        @if($display['delivery_estimate'] ?? null)
+            <div class="small text-secondary mt-2">Entrega: {{ $display['delivery_estimate'] }}</div>
+        @endif
     </div>
     <div class="card-footer bg-white border-0 pt-0">
-        <form method="POST" action="{{ route('store.cart.add') }}" data-cart-add-form>
-            @csrf
-            <input type="hidden" name="item_type" value="product">
-            <input type="hidden" name="product_id" value="{{ $product->id }}">
-            @if($product->product_type === 'variable' && $defaultVariant)
-                <input type="hidden" name="product_variant_id" value="{{ $defaultVariant['id'] }}">
-            @endif
-            <input type="hidden" name="quantity" value="1">
-            <button class="btn btn-outline-dark w-100" @disabled($display['stock'] <= 0)>Agregar</button>
-        </form>
+        @if($display['can_purchase'])
+            <form method="POST" action="{{ route('store.cart.add') }}" data-cart-add-form>
+                @csrf
+                <input type="hidden" name="item_type" value="product">
+                <input type="hidden" name="product_id" value="{{ $product->id }}">
+                @if($product->product_type === 'variable' && $defaultVariant)
+                    <input type="hidden" name="product_variant_id" value="{{ $defaultVariant['id'] }}">
+                @endif
+                <input type="hidden" name="quantity" value="1">
+                <button class="btn btn-outline-dark w-100" @disabled($display['stock'] <= 0)>Agregar</button>
+            </form>
+        @elseif(auth()->check())
+            <a class="btn btn-outline-dark w-100" href="{{ route('account.addresses') }}">Configurar dirección</a>
+        @else
+            <button class="btn btn-outline-dark w-100" type="button" data-bs-toggle="modal" data-bs-target="#authModal">Iniciar sesión para comprar</button>
+        @endif
     </div>
 </div>

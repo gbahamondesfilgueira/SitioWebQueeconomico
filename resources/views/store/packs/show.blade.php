@@ -26,17 +26,32 @@
                         ({{ $display['saving_percentage'] }}%)
                     @endif
                 </div>
-                <span class="badge {{ $display['stock'] <= 0 ? 'text-bg-secondary' : ($display['stock'] <= 5 ? 'text-bg-warning' : 'text-bg-success') }}">{{ $display['stock_label'] }}</span>
-
-                <form method="POST" action="{{ route('store.cart.add') }}" class="mt-3" data-cart-add-form>
-                    @csrf
-                    <input type="hidden" name="item_type" value="pack">
-                    <input type="hidden" name="product_pack_id" value="{{ $pack->id }}">
-                    <div class="input-group">
-                        <input type="number" name="quantity" value="1" min="1" step="1" class="form-control">
-                        <button class="btn btn-dark btn-lg" @disabled($display['stock'] <= 0)>Agregar pack</button>
+                <span class="badge {{ !$display['can_purchase'] ? 'text-bg-info' : ($display['stock'] <= 0 ? 'text-bg-secondary' : ($display['stock'] <= 5 ? 'text-bg-warning' : 'text-bg-success')) }}">{{ $display['stock_label'] }}</span>
+                @if($display['show_local_stock'] ?? false)
+                    <div class="alert alert-info py-2 mt-3 mb-0">
+                        <strong>Stock cerca de ti ({{ $display['local_stock_region'] }}):</strong>
+                        <span class="badge {{ $display['local_stock_class'] }}">{{ $display['local_stock_label'] }}</span>
+                        @if($display['local_stock_warehouse'])<div class="small">Bodega local: {{ $display['local_stock_warehouse'] }}.</div>@endif
+                        <div class="small">La compra se reserva según la dirección de despacho confirmada.</div>
                     </div>
-                </form>
+                @endif
+                @if($display['delivery_estimate'] ?? null)<div class="small text-secondary mt-2">Entrega estimada: {{ $display['delivery_estimate'] }}</div>@endif
+
+                @if($display['can_purchase'])
+                    <form method="POST" action="{{ route('store.cart.add') }}" class="mt-3" data-cart-add-form>
+                        @csrf
+                        <input type="hidden" name="item_type" value="pack">
+                        <input type="hidden" name="product_pack_id" value="{{ $pack->id }}">
+                        <div class="input-group">
+                            <input type="number" name="quantity" value="1" min="1" step="1" class="form-control">
+                            <button class="btn btn-dark btn-lg" @disabled($display['stock'] <= 0)>Agregar pack</button>
+                        </div>
+                    </form>
+                @elseif(auth()->check())
+                    <a class="btn btn-dark btn-lg mt-3" href="{{ route('account.addresses') }}">Configurar dirección de despacho</a>
+                @else
+                    <button class="btn btn-dark btn-lg mt-3" type="button" data-bs-toggle="modal" data-bs-target="#authModal">Iniciar sesión para comprar</button>
+                @endif
             </div>
         </div>
 

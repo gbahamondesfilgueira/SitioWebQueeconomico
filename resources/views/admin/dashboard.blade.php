@@ -4,6 +4,13 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
+    @if($stockIntegrity && $stockIntegrity->status !== 'ok')
+        <div class="alert {{ $stockIntegrity->status === 'error' ? 'alert-danger' : 'alert-warning' }} border-0 shadow-sm">
+            <strong>Alerta de inventario:</strong> {{ $stockIntegrity->message }}.
+            Ejecuta <code>php artisan inventory:reconcile --fix --release-expired</code> después de revisar el detalle en salud del sistema.
+        </div>
+    @endif
+
     @if($newOrders > 0)
         <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center">
             <div><strong>{{ $newOrders }} pedido(s) nuevo(s)</strong> en las ultimas 24 horas.</div>

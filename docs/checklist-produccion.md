@@ -18,12 +18,16 @@
 - [ ] `php artisan event:cache` ejecutado
 - [ ] Queue worker configurado
 - [ ] Cron configurado para `php artisan schedule:run`
+- [ ] Bodega central `ECOM` y bodega regional `BIOBIO` activas, con ubicaciones vendibles
+- [ ] Stock real cargado por bodega y ubicación
+- [ ] `php artisan inventory:reconcile` sin inconsistencias
 - [ ] Backups configurados fuera de `public`
 - [ ] Mail configurado y probado
 - [ ] Logs revisados
 - [ ] HTTPS activo
 - [ ] Headers de seguridad activos
 - [ ] Credenciales reales fuera del repositorio
+- [ ] Secretos expuestos históricamente rotados después de retirar `.env` del historial remoto
 - [ ] `.env.example` sin credenciales reales
 - [ ] `.env.production.example` usado como base del `.env` real
 - [ ] `SESSION_ENCRYPT=true`

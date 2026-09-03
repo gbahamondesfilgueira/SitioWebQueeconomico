@@ -37,5 +37,12 @@ class RegistrationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect(route('login', absolute: false));
+        $this->assertDatabaseHas('customer_addresses', [
+            'address_type' => 'shipping',
+            'region' => 'Región Metropolitana',
+            'commune' => 'Santiago',
+            'is_default' => true,
+            'is_active' => true,
+        ]);
     }
 }

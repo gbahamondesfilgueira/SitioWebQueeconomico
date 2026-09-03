@@ -43,7 +43,7 @@ class ProductController extends Controller
 
     public function create(): View
     {
-        return view('admin.products.create', $this->formData(new Product()));
+        return view('admin.products.create', $this->formData(new Product));
     }
 
     public function store(Request $request): RedirectResponse
@@ -62,6 +62,7 @@ class ProductController extends Controller
             $this->syncRelatedProducts($request, $product);
             $this->storeImages($request, $product);
             $this->syncMediaLibrarySelection($request, $product);
+
             return $product;
         });
 
@@ -191,6 +192,7 @@ class ProductController extends Controller
             'relation_type' => ['required', Rule::in(['related', 'cross_sell', 'up_sell'])],
             'images' => ['nullable', 'array'],
             'images.*' => ['image', 'mimes:'.implode(',', config('products.allowed_image_mimes')), 'max:'.config('products.max_image_size_kb')],
+            'primary_image' => ['nullable', 'image', 'mimes:'.implode(',', config('products.allowed_image_mimes')), 'max:'.config('products.max_image_size_kb')],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
             'selected_primary_image_path' => ['nullable', 'string', 'max:255'],
             'gallery_image_paths' => ['nullable', 'array'],
@@ -279,11 +281,11 @@ class ProductController extends Controller
 
     private function storeImages(Request $request, Product $product): void
     {
-        if (! $request->hasFile('images')) {
+        if (! $request->hasFile('images') && ! $request->hasFile('primary_image')) {
             return;
         }
 
-        foreach ($request->file('images') as $index => $image) {
+        foreach ($request->file('images', []) as $index => $image) {
             $created = $product->images()->create([
                 'image_path' => $image->store('products', 'public'),
                 'alt_text' => $request->input('image_alt_text'),
@@ -294,6 +296,17 @@ class ProductController extends Controller
             if ($created->is_primary) {
                 $this->setPrimaryImage($product, $created->id);
             }
+        }
+
+        if ($request->hasFile('primary_image')) {
+            $primary = $product->images()->create([
+                'image_path' => $request->file('primary_image')->store('products', 'public'),
+                'alt_text' => $request->input('image_alt_text') ?: $product->name,
+                'sort_order' => 0,
+                'is_primary' => false,
+            ]);
+
+            $this->setPrimaryImage($product, $primary->id);
         }
 
         AuditLogger::record('uploaded_image', 'product_images', "Imágenes cargadas para producto: {$product->name}");
@@ -326,10 +339,12 @@ class ProductController extends Controller
             $image->forceFill(['sort_order' => $index + 1])->save();
         }
 
-        $selectedPrimary = $request->input('selected_primary_image_path');
+        $selectedPrimary = $request->hasFile('primary_image')
+            ? null
+            : $request->input('selected_primary_image_path');
         $keepPaths = $galleryPaths->values();
 
-        if ($request->filled('gallery_selection_submitted') && ! $request->hasFile('images')) {
+        if ($request->filled('gallery_selection_submitted') && ! $request->hasFile('images') && ! $request->hasFile('primary_image')) {
             if (is_string($selectedPrimary) && $this->isPublicProductImage($selectedPrimary)) {
                 $keepPaths->push($selectedPrimary);
             }

@@ -240,8 +240,15 @@
                     </div>
                     <div class="modal-body">
                         <label class="form-label">Subir nueva imagen</label>
-                        <input type="file" name="images[]" class="form-control mb-3" accept=".jpg,.jpeg,.png,.webp">
-                        <div class="form-text mb-3">Si subes una imagen nueva, guarda el producto y luego podras seleccionarla desde la biblioteca.</div>
+                        <input
+                            type="file"
+                            name="primary_image"
+                            class="form-control @error('primary_image') is-invalid @enderror"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            data-primary-upload-input
+                        >
+                        @error('primary_image') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        <div class="form-text mb-3" data-primary-upload-status>Selecciona un archivo y presiona "Usar como imagen principal".</div>
 
                         <div class="row g-3">
                             @forelse($mediaImages as $path)
@@ -254,6 +261,10 @@
                                 <div class="col-12 text-secondary">Todavia no hay imagenes en la biblioteca. Sube una imagen nueva y guarda el producto.</div>
                             @endforelse
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" data-apply-primary-upload disabled>Usar como imagen principal</button>
                     </div>
                 </div>
             </div>

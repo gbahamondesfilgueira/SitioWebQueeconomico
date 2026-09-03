@@ -10,3 +10,5 @@ Checklist rápido:
 7. `php artisan system:optimize-production`
 8. Configurar cron y queue worker.
 9. Validar `php artisan system:health-check`.
+10. Ejecutar `php artisan db:seed --class=InventorySeeder --force` para asegurar las estructuras `ECOM` y `BIOBIO` sin alterar cantidades.
+11. Validar `php artisan inventory:reconcile` y revisar que no existan alertas de stock.

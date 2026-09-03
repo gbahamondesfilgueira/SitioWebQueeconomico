@@ -6,12 +6,12 @@ use App\Models\IntegrationLog;
 use App\Models\SystemHealthCheck;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class SystemHealthService
 {
+    public function __construct(private StockReconciliationService $stockReconciliation) {}
+
     public function run(): array
     {
         $checks = [
@@ -20,6 +20,7 @@ class SystemHealthService
             $this->storage(),
             $this->queue(),
             $this->failedIntegrations(),
+            $this->stockReconciliation->healthCheck(),
         ];
 
         foreach ($checks as $check) {
@@ -43,6 +44,7 @@ class SystemHealthService
     {
         try {
             DB::select('select 1');
+
             return $this->check('Base de datos', 'ok', 'Conexion disponible');
         } catch (Throwable $exception) {
             return $this->check('Base de datos', 'error', $exception->getMessage());

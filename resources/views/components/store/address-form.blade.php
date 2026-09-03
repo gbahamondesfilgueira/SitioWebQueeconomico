@@ -5,22 +5,25 @@
     <select name="customer_address_id" class="form-select mb-3" data-address-select>
         <option value="">Ingresar nueva direccion</option>
         @foreach($savedAddresses as $address)
+            @php
+                $addressData = [
+                    'contact_name' => $address->contact_name,
+                    'phone' => $address->phone,
+                    'email' => $address->customerProfile?->email,
+                    'country' => $address->country,
+                    'region' => app(\App\Services\DeliveryRegionService::class)->normalize($address->region),
+                    'commune' => $address->commune,
+                    'city' => $address->city,
+                    'street' => $address->street,
+                    'number' => $address->number,
+                    'apartment' => $address->apartment,
+                    'postal_code' => $address->postal_code,
+                    'reference' => $address->reference,
+                ];
+            @endphp
             <option
                 value="{{ $address->id }}"
-                data-address='@json([
-                    "contact_name" => $address->contact_name,
-                    "phone" => $address->phone,
-                    "email" => $address->customerProfile?->email,
-                    "country" => $address->country,
-                    "region" => $address->region,
-                    "commune" => $address->commune,
-                    "city" => $address->city,
-                    "street" => $address->street,
-                    "number" => $address->number,
-                    "apartment" => $address->apartment,
-                    "postal_code" => $address->postal_code,
-                    "reference" => $address->reference,
-                ])'
+                data-address='@json($addressData)'
             >
                 {{ $address->address_type }} · {{ $address->street }} {{ $address->number }}, {{ $address->commune }}
             </option>
@@ -33,7 +36,7 @@
     <div class="col-md-3"><label class="form-label">Telefono</label><input name="phone" class="form-control" value="{{ old('phone') }}"></div>
     <div class="col-md-3"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="{{ old('email') }}"></div>
     <div class="col-md-3"><label class="form-label">Pais</label><input name="country" class="form-control" value="{{ old('country', 'Chile') }}"></div>
-    <div class="col-md-3"><label class="form-label">Region</label><input name="region" class="form-control" value="{{ old('region') }}"></div>
+    <div class="col-md-3"><label class="form-label" for="region">Región</label><x-region-select required /></div>
     <div class="col-md-3"><label class="form-label">Comuna</label><input name="commune" class="form-control" value="{{ old('commune') }}"></div>
     <div class="col-md-3"><label class="form-label">Ciudad</label><input name="city" class="form-control" value="{{ old('city') }}"></div>
     <div class="col-md-6"><label class="form-label">Calle</label><input name="street" class="form-control" value="{{ old('street') }}"></div>

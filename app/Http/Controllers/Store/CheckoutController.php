@@ -7,11 +7,13 @@ use App\Models\CustomerAddress;
 use App\Models\ShippingQuote;
 use App\Services\AuditLogger;
 use App\Services\CartService;
+use App\Services\DeliveryRegionService;
 use App\Services\ShippingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
@@ -19,7 +21,9 @@ class CheckoutController extends Controller
     public function index(Request $request, CartService $cartService): View|RedirectResponse
     {
         $cart = $cartService->getOrCreateCart($request->user(), $request->session()->getId());
-        if ($cart->items->isEmpty()) return redirect()->route('store.cart.index');
+        if ($cart->items->isEmpty()) {
+            return redirect()->route('store.cart.index');
+        }
         AuditLogger::record('started', 'checkout', "Checkout iniciado #{$cart->id}");
 
         return view('store.checkout.index', $this->checkoutData($request, $cartService, 'customer'));
@@ -47,10 +51,22 @@ class CheckoutController extends Controller
             return view('store.checkout.index', $this->checkoutData($request, $cartService, 'shipping-address'));
         }
 
-        $this->saveAddress($request, $cartService, 'shipping');
-        $cart = $cartService->getOrCreateCart($request->user(), $request->session()->getId());
-        $address = $cart->addresses()->where('address_type', 'shipping')->first();
-        $shippingService->quoteCartShipping($cart, $address->only(['country', 'region', 'commune', 'city']));
+        DB::transaction(function () use ($request, $cartService, $shippingService) {
+            $this->saveAddress($request, $cartService, 'shipping');
+            $cart = $cartService->getOrCreateCart($request->user(), $request->session()->getId());
+            $address = $cart->addresses()->where('address_type', 'shipping')->firstOrFail();
+            $regions = app(DeliveryRegionService::class);
+            $accountRegion = $regions->currentRegion($request->user());
+
+            if ($regions->normalize($address->region) !== $accountRegion) {
+                throw ValidationException::withMessages([
+                    'region' => 'La región de despacho debe coincidir con la dirección principal configurada en tu cuenta.',
+                ]);
+            }
+
+            $shippingService->quoteCartShipping($cart, $address->only(['country', 'region', 'commune', 'city']));
+        });
+
         return redirect()->route('store.checkout.billing-address');
     }
 
@@ -83,11 +99,12 @@ class CheckoutController extends Controller
             'shipping_method' => ['required'],
         ]);
         $cart = $cartService->getOrCreateCart($request->user(), $request->session()->getId());
+        $estimate = $cartService->deliveryEstimate($cart);
         if (str_starts_with($data['shipping_method'], 'quote:')) {
             $quote = ShippingQuote::query()->whereKey((int) str_replace('quote:', '', $data['shipping_method']))->where('cart_session_id', $cart->id)->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->firstOrFail();
-            $selected = ['shipping_quote_id' => $quote->id, 'carrier_name' => $quote->carrier->name, 'service_name' => $quote->service?->name ?? 'Servicio estándar', 'shipping_type' => $quote->service?->service_type === 'pickup' ? 'pickup' : 'delivery', 'estimated_price' => $quote->price, 'estimated_days' => $quote->estimated_days_max];
+            $selected = ['shipping_quote_id' => $quote->id, 'carrier_name' => $quote->carrier->name, 'service_name' => $quote->service?->name ?? 'Servicio estándar', 'shipping_type' => $quote->service?->service_type === 'pickup' ? 'pickup' : 'delivery', 'estimated_price' => $quote->price, 'estimated_days' => $quote->estimated_days_max, 'estimated_days_min' => $quote->estimated_days_min, 'estimated_days_max' => $quote->estimated_days_max];
         } else {
-            $options = $this->shippingOptions();
+            $options = $this->shippingOptions($estimate, $cartService->fulfillmentWarehouses($cart)->count() <= 1);
             $selected = $options[$data['shipping_method']];
         }
         $cart->shippingMethod()->delete();
@@ -122,13 +139,17 @@ class CheckoutController extends Controller
 
     private function saveAddress(Request $request, CartService $cartService, string $type): void
     {
+        if ($request->filled('region')) {
+            $request->merge(['region' => app(DeliveryRegionService::class)->normalize($request->input('region'))]);
+        }
+
         $data = $request->validate([
             'customer_address_id' => ['nullable', 'exists:customer_addresses,id'],
             'contact_name' => ['required_without:customer_address_id', 'string', 'max:255'],
             'phone' => ['required_without:customer_address_id', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'country' => ['required_without:customer_address_id', 'string', 'max:100'],
-            'region' => ['required_without:customer_address_id', 'string', 'max:100'],
+            'region' => ['required_without:customer_address_id', Rule::in(array_keys(app(DeliveryRegionService::class)->regions()))],
             'commune' => ['required_without:customer_address_id', 'string', 'max:100'],
             'city' => ['required_without:customer_address_id', 'string', 'max:100'],
             'street' => ['required_without:customer_address_id', 'string', 'max:255'],
@@ -139,8 +160,15 @@ class CheckoutController extends Controller
         ]);
         $cart = $cartService->getOrCreateCart($request->user(), $request->session()->getId());
 
+        if (isset($data['region'])) {
+            $data['region'] = app(DeliveryRegionService::class)->label($data['region']);
+        }
+
         if (! empty($data['customer_address_id'])) {
-            $address = CustomerAddress::query()->whereKey($data['customer_address_id'])->firstOrFail();
+            $address = CustomerAddress::query()
+                ->whereKey($data['customer_address_id'])
+                ->whereHas('customerProfile', fn ($query) => $query->where('user_id', $request->user()->id))
+                ->firstOrFail();
             $data = [
                 'customer_address_id' => $address->id,
                 'contact_name' => $address->contact_name,
@@ -176,21 +204,24 @@ class CheckoutController extends Controller
             'customer' => $request->user()?->customerProfile,
             'savedAddresses' => $request->user()?->customerProfile?->addresses()->where('is_active', true)->get() ?? collect(),
             'companies' => $request->user()?->customerProfile?->companies()->where('is_active', true)->get() ?? collect(),
-            'shippingOptions' => $this->shippingOptions(),
-            'shippingQuotes' => $cart->shippingMethod?->quote ? collect([$cart->shippingMethod->quote]) : \App\Models\ShippingQuote::query()->with('carrier', 'service')->where('cart_session_id', $cart->id)->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->latest()->limit(10)->get(),
+            'shippingOptions' => $this->shippingOptions($cartService->deliveryEstimate($cart), $cartService->fulfillmentWarehouses($cart)->count() <= 1),
+            'shippingQuotes' => $cart->shippingMethod?->quote ? collect([$cart->shippingMethod->quote]) : ShippingQuote::query()->with('carrier', 'service')->where('cart_session_id', $cart->id)->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->latest()->limit(10)->get(),
             'paymentOptions' => $this->paymentOptions(),
             'seo' => ['title' => 'Checkout'],
         ];
     }
 
-    private function shippingOptions(): array
+    private function shippingOptions(array $estimate, bool $allowPickup = true): array
     {
-        return [
-            'pickup' => ['service_name' => 'Retiro en tienda', 'shipping_type' => 'pickup', 'estimated_price' => 0, 'estimated_days' => 1, 'carrier_name' => null],
-            'standard' => ['service_name' => 'Envío estándar', 'shipping_type' => 'delivery', 'estimated_price' => 3990, 'estimated_days' => 3, 'carrier_name' => 'Qué Económico'],
-            'pay_on_delivery' => ['service_name' => 'Envío por pagar', 'shipping_type' => 'delivery', 'estimated_price' => 0, 'estimated_days' => 4, 'carrier_name' => 'Por definir'],
-            'fixed' => ['service_name' => 'Envío fijo temporal', 'shipping_type' => 'delivery', 'estimated_price' => 2990, 'estimated_days' => 2, 'carrier_name' => 'Qué Económico'],
+        $options = [
+            'standard' => ['service_name' => 'Envío estándar', 'shipping_type' => 'delivery', 'estimated_price' => 3990, 'estimated_days' => $estimate['max'], 'estimated_days_min' => $estimate['min'], 'estimated_days_max' => $estimate['max'], 'carrier_name' => 'Qué Económico'],
+            'pay_on_delivery' => ['service_name' => 'Envío por pagar', 'shipping_type' => 'delivery', 'estimated_price' => 0, 'estimated_days' => $estimate['max'], 'estimated_days_min' => $estimate['min'], 'estimated_days_max' => $estimate['max'], 'carrier_name' => 'Por definir'],
+            'fixed' => ['service_name' => 'Envío fijo temporal', 'shipping_type' => 'delivery', 'estimated_price' => 2990, 'estimated_days' => $estimate['max'], 'estimated_days_min' => $estimate['min'], 'estimated_days_max' => $estimate['max'], 'carrier_name' => 'Qué Económico'],
         ];
+
+        return $allowPickup
+            ? ['pickup' => ['service_name' => 'Retiro en tienda', 'shipping_type' => 'pickup', 'estimated_price' => 0, 'estimated_days' => 1, 'estimated_days_min' => 0, 'estimated_days_max' => 1, 'carrier_name' => null]] + $options
+            : $options;
     }
 
     private function paymentOptions(): array

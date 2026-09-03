@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\Account;
 
 use App\Http\Controllers\Controller;
-use App\Models\CustomerAddress;
-use App\Models\CustomerCompany;
 use App\Models\CustomerProfile;
 use App\Models\Order;
 use App\Models\PriceList;
 use App\Services\AuditLogger;
+use App\Services\DeliveryRegionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -79,16 +79,17 @@ class AccountController extends Controller
         return view('account.addresses', ['customer' => $this->customerProfile($request)->load('addresses')]);
     }
 
-    public function storeAddress(Request $request): RedirectResponse
+    public function storeAddress(Request $request, DeliveryRegionService $regions): RedirectResponse
     {
         $customer = $this->customerProfile($request);
+        $request->merge(['region' => $regions->normalize($request->input('region'))]);
         $data = $request->validate([
             'address_type' => ['required', 'in:billing,shipping,other'],
             'address_label' => ['required', 'in:main,office,home,pickup'],
             'contact_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'country' => ['required', 'string', 'max:100'],
-            'region' => ['required', 'string', 'max:100'],
+            'region' => ['required', Rule::in(array_keys($regions->regions()))],
             'province' => ['nullable', 'string', 'max:100'],
             'commune' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
@@ -102,6 +103,7 @@ class AccountController extends Controller
 
         $data['is_default'] = $request->boolean('is_default');
         $data['is_active'] = true;
+        $data['region'] = $regions->label($data['region']);
 
         if ($data['is_default']) {
             $customer->addresses()->where('address_type', $data['address_type'])->update(['is_default' => false]);

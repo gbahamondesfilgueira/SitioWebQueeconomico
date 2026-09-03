@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
@@ -32,20 +32,88 @@ class Order extends Model
         ];
     }
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function seller(): BelongsTo { return $this->belongsTo(User::class, 'sold_by'); }
-    public function customerProfile(): BelongsTo { return $this->belongsTo(CustomerProfile::class); }
-    public function cart(): BelongsTo { return $this->belongsTo(CartSession::class, 'cart_session_id'); }
-    public function posTerminal(): BelongsTo { return $this->belongsTo(PosTerminal::class); }
-    public function cashRegisterSession(): BelongsTo { return $this->belongsTo(CashRegisterSession::class); }
-    public function items(): HasMany { return $this->hasMany(OrderItem::class); }
-    public function addresses(): HasMany { return $this->hasMany(OrderAddress::class); }
-    public function payments(): HasMany { return $this->hasMany(OrderPayment::class); }
-    public function shipment(): HasOne { return $this->hasOne(OrderShipment::class); }
-    public function histories(): HasMany { return $this->hasMany(OrderStatusHistory::class); }
-    public function fulfillment(): HasOne { return $this->hasOne(OrderFulfillment::class); }
-    public function cancellations(): HasMany { return $this->hasMany(OrderCancellation::class); }
-    public function returns(): HasMany { return $this->hasMany(OrderReturn::class); }
-    public function posCancellation(): HasOne { return $this->hasOne(PosSaleCancellation::class); }
-    public function posRefunds(): HasMany { return $this->hasMany(PosRefund::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sold_by');
+    }
+
+    public function customerProfile(): BelongsTo
+    {
+        return $this->belongsTo(CustomerProfile::class);
+    }
+
+    public function cart(): BelongsTo
+    {
+        return $this->belongsTo(CartSession::class, 'cart_session_id');
+    }
+
+    public function posTerminal(): BelongsTo
+    {
+        return $this->belongsTo(PosTerminal::class);
+    }
+
+    public function cashRegisterSession(): BelongsTo
+    {
+        return $this->belongsTo(CashRegisterSession::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(OrderAddress::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
+    public function shipment(): HasOne
+    {
+        return $this->hasOne(OrderShipment::class);
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    public function fulfillment(): HasOne
+    {
+        return $this->hasOne(OrderFulfillment::class);
+    }
+
+    public function fulfillments(): HasMany
+    {
+        return $this->hasMany(OrderFulfillment::class);
+    }
+
+    public function cancellations(): HasMany
+    {
+        return $this->hasMany(OrderCancellation::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(OrderReturn::class);
+    }
+
+    public function posCancellation(): HasOne
+    {
+        return $this->hasOne(PosSaleCancellation::class);
+    }
+
+    public function posRefunds(): HasMany
+    {
+        return $this->hasMany(PosRefund::class);
+    }
 }

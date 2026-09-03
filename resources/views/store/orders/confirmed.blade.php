@@ -16,6 +16,9 @@
                     <div class="col-md-4"><strong>Estado</strong><div>{{ $order->order_status }}</div></div>
                     <div class="col-md-4"><strong>Pago</strong><div>{{ $payment?->payment_label }}</div></div>
                 </div>
+                @if($order->shipment)
+                    <div class="alert alert-info mt-4 mb-0">Entrega estimada: {{ $order->shipment->estimated_days_min }} a {{ $order->shipment->estimated_days_max }} días hábiles.</div>
+                @endif
                 @if($payment?->payment_method === 'bank_transfer')
                     <div class="alert alert-warning mt-4">
                         Para completar tu compra por transferencia, escríbenos por WhatsApp indicando tu número de pedido.

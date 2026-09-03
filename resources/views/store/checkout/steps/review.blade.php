@@ -7,8 +7,9 @@
         @endforeach
         <h2 class="h6 mt-4">Despacho y pago</h2>
         <p class="mb-1">Envío: {{ $cart->shippingMethod?->service_name ?? 'No seleccionado' }}</p>
+        @if($cart->shippingMethod)<p class="mb-1">Plazo estimado: {{ $cart->shippingMethod->estimated_days_min }} a {{ $cart->shippingMethod->estimated_days_max }} días hábiles</p>@endif
         <p class="mb-1">Pago: {{ $cart->paymentMethod?->payment_label ?? 'No seleccionado' }}</p>
-        <div class="alert alert-info mt-3 mb-0">La compra queda lista para crear pedido en Fase 9. Aún no se consume stock ni se procesa pago real.</div>
+        <div class="alert alert-info mt-3 mb-0">El stock ya está reservado en la bodega asignada. Se consumirá al confirmar el pedido.</div>
     </div>
     <div class="card-footer bg-white d-flex justify-content-between">
         <a href="{{ route('store.checkout.payment-method') }}" class="btn btn-outline-secondary">Volver</a>

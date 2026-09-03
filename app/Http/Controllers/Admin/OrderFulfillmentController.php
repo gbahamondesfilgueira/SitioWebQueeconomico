@@ -13,14 +13,18 @@ class OrderFulfillmentController extends Controller
 {
     public function show(Order $order): View
     {
-        return view('admin.orders.fulfillment', ['order' => $order->load('fulfillment.items.orderItem')]);
+        return view('admin.orders.fulfillment', ['order' => $order->load('fulfillments.warehouse', 'fulfillments.items.orderItem', 'fulfillments.items.location')]);
     }
 
     public function update(Request $request, Order $order, OrderService $service): RedirectResponse
     {
         $data = $request->validate(['fulfillment_status' => ['required', 'string'], 'notes' => ['nullable', 'string']]);
         $service->updateFulfillmentStatus($order, $data['fulfillment_status'], $data['notes'] ?? null);
-        $order->fulfillment?->update(['status' => $data['fulfillment_status'] === 'picking' ? 'picking' : ($data['fulfillment_status'] === 'packed' ? 'packed' : ($data['fulfillment_status'] === 'ready' ? 'ready' : $order->fulfillment->status))]);
+        $mappedStatus = in_array($data['fulfillment_status'], ['picking', 'packed', 'ready', 'cancelled'], true) ? $data['fulfillment_status'] : null;
+        if ($mappedStatus) {
+            $order->fulfillments()->update(['status' => $mappedStatus]);
+        }
+
         return back()->with('success', 'Preparación actualizada.');
     }
 }

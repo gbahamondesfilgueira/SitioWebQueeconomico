@@ -146,7 +146,7 @@ Si la base ya existe, por ejemplo `webstati_queeconomico`, ejecuta:
 php artisan app:install-production \
   --public-path=/home/webstati/queeconomico.queeconomico.cl \
   --admin-email=gbahamondesfilgueira@gmail.com \
-  --admin-password='Guillermo#1712' \
+  --admin-password='REEMPLAZAR_CON_PASSWORD_SEGURO' \
   --seed \
   --force
 ```
@@ -159,7 +159,7 @@ php artisan app:install-production \
   --db-admin-user=webstati_nameuser \
   --public-path=/home/webstati/queeconomico.queeconomico.cl \
   --admin-email=gbahamondesfilgueira@gmail.com \
-  --admin-password='Guillermo#1712' \
+  --admin-password='REEMPLAZAR_CON_PASSWORD_SEGURO' \
   --seed \
   --force
 ```

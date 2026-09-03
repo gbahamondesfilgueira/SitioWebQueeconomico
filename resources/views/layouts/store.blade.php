@@ -1,15 +1,20 @@
 @php
     $setting = \App\Models\Setting::current();
     $menuCategories = app(\App\Services\StorefrontService::class)->categoryMenu();
+    $deliveryRegionService = app(\App\Services\DeliveryRegionService::class);
+    $currentDeliveryRegion = $deliveryRegionService->currentRegion();
+    $localStockRegion = $deliveryRegionService->currentLocalStockRegion();
     $storeLogo = asset('images/que-economico-logo.png');
     $cartCount = 0;
     try {
-        $activeCart = \App\Models\CartSession::query()
-            ->where('status', 'active')
-            ->when(auth()->check(), fn ($query) => $query->where('user_id', auth()->id()), fn ($query) => $query->where('session_id', request()->session()->getId()))
-            ->with('items:id,cart_session_id,quantity')
-            ->latest()
-            ->first();
+        $activeCart = auth()->check()
+            ? \App\Models\CartSession::query()
+                ->where('status', 'active')
+                ->where('user_id', auth()->id())
+                ->with('items:id,cart_session_id,quantity')
+                ->latest()
+                ->first()
+            : null;
         $cartCount = (int) ($activeCart?->items->sum('quantity') ?? 0);
     } catch (\Throwable $exception) {
         $cartCount = 0;
@@ -148,7 +153,36 @@
     <header class="qe-store-header sticky-top">
         <div class="qe-store-topbar">
             <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div class="small">Despacho a todo Chile | Retiro en tienda preparado</div>
+                <div class="d-flex flex-wrap align-items-center gap-2 small">
+                    @auth
+                        <div class="d-flex align-items-center gap-2">
+                            @if($currentDeliveryRegion)
+                                <span>Stock y despacho para <strong>{{ $deliveryRegionService->label($currentDeliveryRegion) }}</strong></span>
+                                <a href="{{ route('account.addresses') }}">Actualizar dirección</a>
+                            @else
+                                <a href="{{ route('account.addresses') }}">Configura tu dirección para comprar</a>
+                            @endif
+                        </div>
+                        <span aria-hidden="true">·</span>
+                    @endauth
+                    <div
+                        class="d-flex flex-wrap align-items-center gap-2"
+                        data-stock-location
+                        data-location-url="{{ route('store.location.stock-region') }}"
+                        data-current-local-region="{{ $localStockRegion }}"
+                    >
+                        @if($localStockRegion)
+                            <span>Stock cerca de ti: <strong>{{ $deliveryRegionService->label($localStockRegion) }}</strong></span>
+                            <button type="button" class="btn btn-link btn-sm p-0" data-location-detect>Actualizar ubicación</button>
+                            @if($currentDeliveryRegion && $currentDeliveryRegion !== $localStockRegion)
+                                <span class="text-warning-emphasis">El despacho sigue usando tu dirección registrada.</span>
+                            @endif
+                        @else
+                            <button type="button" class="btn btn-link btn-sm p-0" data-location-detect>Usar mi ubicación para ver stock cercano</button>
+                        @endif
+                        <span class="text-secondary" role="status" data-location-status></span>
+                    </div>
+                </div>
                 <div class="d-flex gap-3 small">
                     <a href="{{ route('store.pages.show', 'contacto') }}">Centro de ayuda</a>
                     <a href="{{ route('store.pages.show', 'politicas-de-envio') }}">Despachos</a>
@@ -181,10 +215,14 @@
                         <button class="btn btn-outline-dark d-none d-md-inline-flex" type="button" data-bs-toggle="modal" data-bs-target="#authModal">Ingresar</button>
                     @endauth
 
-                    <a class="btn qe-cart-button" href="{{ route('store.cart.index') }}">
-                        Carrito
-                        <span class="qe-cart-badge" data-cart-count @if($cartCount < 1) hidden @endif>{{ $cartCount }}</span>
-                    </a>
+                    @auth
+                        <a class="btn qe-cart-button" href="{{ route('store.cart.index') }}">
+                            Carrito
+                            <span class="qe-cart-badge" data-cart-count @if($cartCount < 1) hidden @endif>{{ $cartCount }}</span>
+                        </a>
+                    @else
+                        <button class="btn qe-cart-button" type="button" data-bs-toggle="modal" data-bs-target="#authModal">Carrito</button>
+                    @endauth
                 </div>
             </div>
         </div>
@@ -293,7 +331,7 @@
                                     <input type="text" name="phone" class="form-control mb-2" placeholder="Telefono" required>
                                     <input type="text" name="rut" class="form-control mb-2" placeholder="RUT opcional">
                                     <div class="row g-2">
-                                        <div class="col-6"><input type="text" name="region" class="form-control mb-2" placeholder="Region" required></div>
+                                        <div class="col-6"><x-region-select class="mb-2" required /></div>
                                         <div class="col-6"><input type="text" name="commune" class="form-control mb-2" placeholder="Comuna" required></div>
                                         <div class="col-6"><input type="text" name="city" class="form-control mb-2" placeholder="Ciudad" required></div>
                                         <div class="col-6"><input type="text" name="street" class="form-control mb-2" placeholder="Calle" required></div>

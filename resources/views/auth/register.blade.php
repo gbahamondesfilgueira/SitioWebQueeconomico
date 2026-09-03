@@ -38,7 +38,7 @@
 
         <h2 class="h6 mt-2">Direccion de envio y facturacion</h2>
         <div class="row g-2">
-            <div class="col-md-6 mb-3"><label class="form-label" for="region">Region</label><input id="region" name="region" class="form-control @error('region') is-invalid @enderror" value="{{ old('region') }}" required>@error('region') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
+            <div class="col-md-6 mb-3"><label class="form-label" for="region">Región</label><x-region-select class="@error('region') is-invalid @enderror" required />@error('region') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
             <div class="col-md-6 mb-3"><label class="form-label" for="commune">Comuna</label><input id="commune" name="commune" class="form-control @error('commune') is-invalid @enderror" value="{{ old('commune') }}" required>@error('commune') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
             <div class="col-md-6 mb-3"><label class="form-label" for="city">Ciudad</label><input id="city" name="city" class="form-control @error('city') is-invalid @enderror" value="{{ old('city') }}" required>@error('city') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
             <div class="col-md-6 mb-3"><label class="form-label" for="street">Calle</label><input id="street" name="street" class="form-control @error('street') is-invalid @enderror" value="{{ old('street') }}" required>@error('street') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>

@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\DeliveryRegionService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -25,14 +27,15 @@ class RegisteredUserController extends Controller
     /**
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, DeliveryRegionService $regions): RedirectResponse
     {
+        $request->merge(['region' => $regions->normalize($request->input('region'))]);
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone' => ['required', 'string', 'max:50'],
             'rut' => ['nullable', 'string', 'max:30'],
-            'region' => ['required', 'string', 'max:100'],
+            'region' => ['required', Rule::in(array_keys($regions->regions()))],
             'commune' => ['required', 'string', 'max:100'],
             'city' => ['required', 'string', 'max:100'],
             'street' => ['required', 'string', 'max:255'],
@@ -74,7 +77,7 @@ class RegisteredUserController extends Controller
             'contact_name' => $request->name,
             'phone' => $request->phone,
             'country' => 'Chile',
-            'region' => $request->region,
+            'region' => $regions->label($request->region),
             'commune' => $request->commune,
             'city' => $request->city,
             'street' => $request->street,

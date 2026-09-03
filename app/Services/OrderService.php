@@ -5,12 +5,10 @@ namespace App\Services;
 use App\Models\CartItem;
 use App\Models\CartSession;
 use App\Models\Order;
-use App\Models\OrderFulfillment;
-use App\Models\OrderItem;
 use App\Models\OrderReturn;
 use App\Models\StockReservation;
 use App\Models\User;
-use App\Models\Warehouse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,12 +24,24 @@ class OrderService
     {
         return DB::transaction(function () use ($cart, $user) {
             $cart = CartSession::query()->whereKey($cart->id)->lockForUpdate()->with(['items.product', 'items.variant', 'items.pack.items.product', 'items.pack.items.variant', 'addresses', 'paymentMethod', 'shippingMethod', 'coupons'])->firstOrFail();
-            if ($cart->status !== 'active') throw ValidationException::withMessages(['cart' => 'El carrito ya fue confirmado o no está activo.']);
-            if ($cart->items->isEmpty()) throw ValidationException::withMessages(['cart' => 'El carrito está vacío.']);
-            if (! $cart->addresses->where('address_type', 'shipping')->first()) throw ValidationException::withMessages(['shipping' => 'Falta dirección de despacho.']);
-            if (! $cart->addresses->where('address_type', 'billing')->first()) throw ValidationException::withMessages(['billing' => 'Falta dirección de facturación.']);
-            if (! $cart->paymentMethod) throw ValidationException::withMessages(['payment' => 'Falta método de pago.']);
-            if (! $cart->shippingMethod) throw ValidationException::withMessages(['shipping_method' => 'Falta método de envío.']);
+            if ($cart->status !== 'active') {
+                throw ValidationException::withMessages(['cart' => 'El carrito ya fue confirmado o no está activo.']);
+            }
+            if ($cart->items->isEmpty()) {
+                throw ValidationException::withMessages(['cart' => 'El carrito está vacío.']);
+            }
+            if (! $cart->addresses->where('address_type', 'shipping')->first()) {
+                throw ValidationException::withMessages(['shipping' => 'Falta dirección de despacho.']);
+            }
+            if (! $cart->addresses->where('address_type', 'billing')->first()) {
+                throw ValidationException::withMessages(['billing' => 'Falta dirección de facturación.']);
+            }
+            if (! $cart->paymentMethod) {
+                throw ValidationException::withMessages(['payment' => 'Falta método de pago.']);
+            }
+            if (! $cart->shippingMethod) {
+                throw ValidationException::withMessages(['shipping_method' => 'Falta método de envío.']);
+            }
 
             $this->cartService->recalculateCart($cart);
             $summary = $this->cartService->getCartSummary($cart);
@@ -65,8 +75,13 @@ class OrderService
             $this->createOrderAddresses($order, $cart);
             $this->createOrderPayment($order, $cart);
             $this->createOrderShipment($order, $cart);
-            $this->consumeStockReservations($order, $cart);
-            $this->createFulfillment($order);
+            $reservations = StockReservation::query()
+                ->where('reference_type', CartItem::class)
+                ->whereIn('reference_id', $cart->items->pluck('id'))
+                ->where('status', 'active')
+                ->get();
+            $this->createFulfillments($order, $reservations);
+            $this->consumeStockReservations($order, $reservations);
             $this->recordStatus($order, 'order', null, 'confirmed', 'Pedido confirmado desde checkout.');
             $cart->update(['status' => 'converted']);
 
@@ -81,6 +96,7 @@ class OrderService
         do {
             $number = 'QE-'.now()->format('Ymd').'-'.str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
         } while (Order::query()->where('order_number', $number)->exists());
+
         return $number;
     }
 
@@ -159,13 +175,14 @@ class OrderService
             'shipping_status' => 'pending',
             'shipping_cost' => $shipping->estimated_price,
             'estimated_days' => $shipping->estimated_days,
+            'estimated_days_min' => $shipping->estimated_days_min,
+            'estimated_days_max' => $shipping->estimated_days_max,
             'metadata' => $shipping->metadata,
         ]);
     }
 
-    public function consumeStockReservations(Order $order, CartSession $cart): void
+    public function consumeStockReservations(Order $order, Collection $reservations): void
     {
-        $reservations = StockReservation::query()->where('reference_type', CartItem::class)->whereIn('reference_id', $cart->items->pluck('id'))->where('status', 'active')->get();
         foreach ($reservations as $reservation) {
             $this->inventoryService->consumeReservation($reservation);
         }
@@ -175,48 +192,64 @@ class OrderService
     public function updateOrderStatus(Order $order, string $newStatus, ?string $notes = null): Order
     {
         $allowed = ['pending', 'confirmed', 'paid', 'preparing', 'ready_to_ship', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded'];
-        if (! in_array($newStatus, $allowed, true)) throw ValidationException::withMessages(['status' => 'Estado de pedido inválido.']);
+        if (! in_array($newStatus, $allowed, true)) {
+            throw ValidationException::withMessages(['status' => 'Estado de pedido inválido.']);
+        }
         $old = $order->order_status;
         $order->update(['order_status' => $newStatus, 'completed_at' => $newStatus === 'completed' ? now() : $order->completed_at]);
         $this->recordStatus($order, 'order', $old, $newStatus, $notes);
         AuditLogger::record('status_updated', 'orders', "Pedido {$order->order_number}: {$old} -> {$newStatus}");
+
         return $order->refresh();
     }
 
     public function updatePaymentStatus(Order $order, string $newStatus, ?string $notes = null): Order
     {
         $allowed = ['pending', 'paid', 'partially_paid', 'failed', 'refunded'];
-        if (! in_array($newStatus, $allowed, true)) throw ValidationException::withMessages(['status' => 'Estado de pago inválido.']);
+        if (! in_array($newStatus, $allowed, true)) {
+            throw ValidationException::withMessages(['status' => 'Estado de pago inválido.']);
+        }
         $old = $order->payment_status;
         $order->update(['payment_status' => $newStatus, 'paid_at' => $newStatus === 'paid' ? now() : $order->paid_at]);
         $order->payments()->latest()->first()?->update(['payment_status' => $newStatus === 'partially_paid' ? 'pending' : $newStatus, 'paid_at' => $newStatus === 'paid' ? now() : null]);
         $this->recordStatus($order, 'payment', $old, $newStatus, $notes);
         AuditLogger::record('payment_updated', 'order_payments', "Pago pedido {$order->order_number}: {$newStatus}");
+
         return $order->refresh();
     }
 
     public function updateFulfillmentStatus(Order $order, string $newStatus, ?string $notes = null): Order
     {
         $allowed = ['pending', 'picking', 'packed', 'ready', 'shipped', 'delivered', 'cancelled'];
-        if (! in_array($newStatus, $allowed, true)) throw ValidationException::withMessages(['status' => 'Estado de preparación inválido.']);
+        if (! in_array($newStatus, $allowed, true)) {
+            throw ValidationException::withMessages(['status' => 'Estado de preparación inválido.']);
+        }
         $old = $order->fulfillment_status;
         $order->update(['fulfillment_status' => $newStatus]);
         $this->recordStatus($order, 'fulfillment', $old, $newStatus, $notes);
         AuditLogger::record('fulfillment_updated', 'order_fulfillments', "Preparación pedido {$order->order_number}: {$newStatus}");
+
         return $order->refresh();
     }
 
     public function cancelOrder(Order $order, string $reason, bool $restoreStock = true, ?string $notes = null): Order
     {
         return DB::transaction(function () use ($order, $reason, $restoreStock, $notes) {
-            if (in_array($order->order_status, ['completed', 'cancelled'], true)) throw ValidationException::withMessages(['order' => 'No se puede cancelar este pedido.']);
-            if ($order->cancellations()->exists()) throw ValidationException::withMessages(['order' => 'El pedido ya tiene cancelación registrada.']);
+            if (in_array($order->order_status, ['completed', 'cancelled'], true)) {
+                throw ValidationException::withMessages(['order' => 'No se puede cancelar este pedido.']);
+            }
+            if ($order->cancellations()->exists()) {
+                throw ValidationException::withMessages(['order' => 'El pedido ya tiene cancelación registrada.']);
+            }
             $order->cancellations()->create(['reason' => $reason, 'notes' => $notes, 'cancelled_by' => Auth::id() ?? 1, 'cancelled_at' => now(), 'restore_stock' => $restoreStock]);
-            if ($restoreStock) $this->restoreOrderStock($order);
+            if ($restoreStock) {
+                $this->restoreOrderStock($order);
+            }
             $this->updateOrderStatus($order, 'cancelled', $reason);
             $this->updateFulfillmentStatus($order, 'cancelled', $reason);
             $order->update(['cancelled_at' => now()]);
             AuditLogger::record('cancelled', 'orders', "Pedido cancelado {$order->order_number}");
+
             return $order->refresh();
         });
     }
@@ -227,10 +260,13 @@ class OrderService
             $return = $order->returns()->create(['return_number' => 'RET-'.now()->format('Ymd').'-'.random_int(1000, 9999), 'reason' => $reason, 'notes' => $notes, 'requested_by' => Auth::id()]);
             foreach ($items as $item) {
                 $orderItem = $order->items()->whereKey($item['order_item_id'])->firstOrFail();
-                if ((int) $item['quantity'] > $orderItem->quantity) throw ValidationException::withMessages(['quantity' => 'No puedes devolver más unidades que las compradas.']);
+                if ((int) $item['quantity'] > $orderItem->quantity) {
+                    throw ValidationException::withMessages(['quantity' => 'No puedes devolver más unidades que las compradas.']);
+                }
                 $return->items()->create(['order_item_id' => $orderItem->id, 'quantity' => $item['quantity'], 'condition' => $item['condition'] ?? 'opened', 'restock' => (bool) ($item['restock'] ?? false), 'notes' => $item['notes'] ?? null]);
             }
             AuditLogger::record('requested', 'order_returns', "Devolución solicitada {$return->return_number}");
+
             return $return;
         });
     }
@@ -239,6 +275,7 @@ class OrderService
     {
         $return->update(['status' => 'approved', 'approved_by' => Auth::id(), 'approved_at' => now()]);
         AuditLogger::record('approved', 'order_returns', "Devolución aprobada {$return->return_number}");
+
         return $return;
     }
 
@@ -248,33 +285,57 @@ class OrderService
             foreach ($return->items()->with('orderItem')->get() as $item) {
                 if ($item->restock) {
                     $orderItem = $item->orderItem;
-                    $this->inventoryService->increaseStock($this->defaultWarehouseId(), $orderItem->product_id, $orderItem->product_variant_id, null, (float) $item->quantity, 'return_in', 'Devolución recibida', OrderReturn::class, $return->id);
+                    $sources = $return->order->fulfillments()
+                        ->with('items')
+                        ->get()
+                        ->flatMap(fn ($fulfillment) => $fulfillment->items->map(fn ($fulfillmentItem) => [$fulfillment, $fulfillmentItem]))
+                        ->filter(fn ($source) => $source[1]->order_item_id === $orderItem->id);
+
+                    foreach ($sources as [$fulfillment, $fulfillmentItem]) {
+                        $restockQuantity = (float) $fulfillmentItem->required_quantity * ((int) $item->quantity / max(1, (int) $orderItem->quantity));
+                        $this->inventoryService->increaseStock($fulfillment->warehouse_id, $fulfillmentItem->product_id, $fulfillmentItem->product_variant_id, $fulfillmentItem->warehouse_location_id, $restockQuantity, 'return_in', 'Devolución recibida', OrderReturn::class, $return->id);
+                    }
                 }
             }
             $return->update(['status' => 'received', 'received_at' => now()]);
             AuditLogger::record('received', 'order_returns', "Devolución recibida {$return->return_number}");
+
             return $return;
         });
     }
 
-    private function createFulfillment(Order $order): void
+    private function createFulfillments(Order $order, Collection $reservations): void
     {
-        $fulfillment = $order->fulfillment()->create(['warehouse_id' => $this->defaultWarehouseId(), 'status' => 'pending']);
-        foreach ($order->items as $item) {
-            if ($item->item_type === 'pack') {
-                foreach ($item->packComponents as $component) {
-                    $fulfillment->items()->create(['order_item_id' => $item->id, 'product_id' => $component->product_id, 'product_variant_id' => $component->product_variant_id, 'required_quantity' => $component->total_quantity]);
+        $order->load('items');
+        $orderItems = $order->items->keyBy(fn ($item) => (int) data_get($item->metadata, 'cart_item_id'));
+
+        foreach ($reservations->groupBy('warehouse_id') as $warehouseId => $warehouseReservations) {
+            $fulfillment = $order->fulfillments()->create(['warehouse_id' => $warehouseId, 'status' => 'pending']);
+
+            foreach ($warehouseReservations as $reservation) {
+                $orderItem = $orderItems->get((int) $reservation->reference_id);
+                if (! $orderItem) {
+                    throw ValidationException::withMessages(['cart' => 'No fue posible vincular la reserva con el pedido.']);
                 }
-            } else {
-                $fulfillment->items()->create(['order_item_id' => $item->id, 'product_id' => $item->product_id, 'product_variant_id' => $item->product_variant_id, 'required_quantity' => $item->quantity]);
+
+                $fulfillment->items()->create([
+                    'order_item_id' => $orderItem->id,
+                    'product_id' => $reservation->product_id,
+                    'product_variant_id' => $reservation->product_variant_id,
+                    'warehouse_location_id' => $reservation->warehouse_location_id,
+                    'stock_reservation_id' => $reservation->id,
+                    'required_quantity' => $reservation->quantity,
+                ]);
             }
         }
     }
 
     private function restoreOrderStock(Order $order): void
     {
-        foreach ($order->fulfillment?->items ?? [] as $item) {
-            $this->inventoryService->increaseStock($this->defaultWarehouseId(), $item->product_id, $item->product_variant_id, null, (float) $item->required_quantity, 'return_in', 'Stock restaurado por cancelación', Order::class, $order->id);
+        foreach ($order->fulfillments()->with('items')->get() as $fulfillment) {
+            foreach ($fulfillment->items as $item) {
+                $this->inventoryService->increaseStock($fulfillment->warehouse_id, $item->product_id, $item->product_variant_id, $item->warehouse_location_id, (float) $item->required_quantity, 'return_in', 'Stock restaurado por cancelación', Order::class, $order->id);
+            }
         }
         AuditLogger::record('restored', 'orders', "Stock restaurado pedido {$order->order_number}");
     }
@@ -282,10 +343,5 @@ class OrderService
     private function recordStatus(Order $order, string $type, ?string $old, string $new, ?string $notes = null): void
     {
         $order->histories()->create(['status_type' => $type, 'old_status' => $old, 'new_status' => $new, 'notes' => $notes, 'user_id' => Auth::id()]);
-    }
-
-    private function defaultWarehouseId(): int
-    {
-        return (Warehouse::query()->where('code', 'ECOM')->first() ?? Warehouse::query()->firstOrFail())->id;
     }
 }

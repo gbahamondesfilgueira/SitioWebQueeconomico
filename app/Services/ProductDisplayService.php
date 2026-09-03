@@ -5,13 +5,15 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\ProductPack;
 use App\Models\ProductVariant;
-use App\Models\StockLevel;
-use App\Models\Warehouse;
 use Illuminate\Support\Facades\Storage;
 
 class ProductDisplayService
 {
-    public function __construct(private PricingService $pricingService) {}
+    public function __construct(
+        private PricingService $pricingService,
+        private StockAllocationService $stockAllocationService,
+        private DeliveryRegionService $deliveryRegionService,
+    ) {}
 
     public function presentProduct(Product $product, ?ProductVariant $variant = null, int $quantity = 1): array
     {
@@ -19,7 +21,13 @@ class ProductDisplayService
         $price = $this->pricingService->getBestPrice($product, $variant, $quantity, auth()->user());
         $regular = (float) ($variant?->regular_price ?? $product->regular_price ?? $price['base_price']);
         $final = (float) $price['final_price'];
-        $stock = $this->availableStock($product, $variant);
+        $availability = $this->availability($product, $variant);
+        $stock = (int) $availability['available_stock'];
+        $purchaseRegion = $this->currentPurchaseRegion();
+        $canPurchase = $purchaseRegion !== null;
+        $localRegion = $this->deliveryRegionService->currentLocalStockRegion();
+        $localAvailability = $this->availabilityForRegion($product, $variant, $localRegion, true);
+        $localStock = $localRegion ? (int) $localAvailability['available_stock'] : null;
 
         return [
             'product' => $product,
@@ -29,8 +37,19 @@ class ProductDisplayService
             'final_price' => $final,
             'discount_percentage' => $regular > 0 && $final < $regular ? round((($regular - $final) / $regular) * 100) : 0,
             'stock' => $stock,
-            'stock_label' => $this->stockLabel($stock),
-            'stock_class' => $stock <= 0 ? 'text-bg-secondary' : ($stock <= 5 ? 'text-bg-warning' : 'text-bg-success'),
+            'stock_label' => $canPurchase ? $this->stockLabel($stock) : $this->purchaseRequiredLabel(),
+            'stock_class' => $canPurchase ? ($stock <= 0 ? 'text-bg-secondary' : ($stock <= 5 ? 'text-bg-warning' : 'text-bg-success')) : 'text-bg-info',
+            'can_purchase' => $canPurchase,
+            'stock_warehouse' => $availability['warehouse']?->name,
+            'delivery_estimate' => $availability['estimate']['label'] ?? null,
+            'uses_central_fallback' => (bool) ($availability['is_fallback'] ?? false),
+            'destination_region' => $this->deliveryRegionService->label($purchaseRegion),
+            'show_local_stock' => $localRegion !== null && $localRegion !== $purchaseRegion,
+            'local_stock' => $localStock,
+            'local_stock_label' => $localStock !== null ? $this->stockLabel($localStock) : null,
+            'local_stock_class' => $localStock !== null ? $this->stockClass($localStock) : null,
+            'local_stock_region' => $this->deliveryRegionService->label($localRegion),
+            'local_stock_warehouse' => $localAvailability['warehouse']?->name,
             'image' => $this->imageUrl($variant?->image_path ?: $this->primaryImagePath($product)),
             'variants' => $this->variantsForFrontend($product),
         ];
@@ -44,7 +63,22 @@ class ProductDisplayService
             fn ($item) => (float) ($item->variant?->regular_price ?? $item->product?->regular_price ?? 0) * $item->quantity
         ));
         $price = (float) $pack->pack_price;
-        $stock = (int) $pack->getAvailableStock($this->ecommerceWarehouseId());
+        $purchaseRegion = $this->currentPurchaseRegion();
+        $availability = $purchaseRegion
+            ? $this->stockAllocationService->packAvailability($pack, $purchaseRegion)
+            : ['available_stock' => 0, 'warehouse' => null, 'estimate' => null, 'is_fallback' => false];
+        $stock = (int) $availability['available_stock'];
+        $canPurchase = $purchaseRegion !== null;
+        $localRegion = $this->deliveryRegionService->currentLocalStockRegion();
+        $localAvailability = $localRegion
+            ? $this->stockAllocationService->packAvailability($pack, $localRegion)
+            : $this->emptyAvailability();
+
+        if ($localAvailability['is_fallback'] ?? false) {
+            $localAvailability = $this->emptyAvailability();
+        }
+
+        $localStock = $localRegion ? (int) $localAvailability['available_stock'] : null;
 
         return [
             'pack' => $pack,
@@ -53,30 +87,24 @@ class ProductDisplayService
             'saving' => max(0, $normal - $price),
             'saving_percentage' => $normal > 0 && $price < $normal ? round((($normal - $price) / $normal) * 100) : 0,
             'stock' => $stock,
-            'stock_label' => $this->stockLabel($stock),
+            'stock_label' => $canPurchase ? $this->stockLabel($stock) : $this->purchaseRequiredLabel(),
+            'can_purchase' => $canPurchase,
+            'stock_warehouse' => $availability['warehouse']?->name,
+            'delivery_estimate' => $availability['estimate']['label'] ?? null,
+            'uses_central_fallback' => (bool) ($availability['is_fallback'] ?? false),
+            'show_local_stock' => $localRegion !== null && $localRegion !== $purchaseRegion,
+            'local_stock' => $localStock,
+            'local_stock_label' => $localStock !== null ? $this->stockLabel($localStock) : null,
+            'local_stock_class' => $localStock !== null ? $this->stockClass($localStock) : null,
+            'local_stock_region' => $this->deliveryRegionService->label($localRegion),
+            'local_stock_warehouse' => $localAvailability['warehouse']?->name,
             'image' => $this->imageUrl($pack->image_path),
         ];
     }
 
     public function availableStock(Product $product, ?ProductVariant $variant = null): int
     {
-        $warehouseId = $this->ecommerceWarehouseId();
-
-        if (! $variant && $product->product_type === 'variable') {
-            return (int) StockLevel::query()
-                ->where('product_id', $product->id)
-                ->whereNotNull('product_variant_id')
-                ->when($warehouseId, fn ($query) => $query->where('warehouse_id', $warehouseId))
-                ->get()
-                ->sum('available_stock');
-        }
-
-        return (int) StockLevel::query()
-            ->where('product_id', $product->id)
-            ->where('product_variant_id', $variant?->id)
-            ->when($warehouseId, fn ($query) => $query->where('warehouse_id', $warehouseId))
-            ->get()
-            ->sum('available_stock');
+        return (int) $this->availability($product, $variant)['available_stock'];
     }
 
     public function stockLabel(int $stock): string
@@ -90,6 +118,11 @@ class ProductDisplayService
         }
 
         return 'Disponible';
+    }
+
+    public function stockClass(int $stock): string
+    {
+        return $stock <= 0 ? 'text-bg-secondary' : ($stock <= 5 ? 'text-bg-warning' : 'text-bg-success');
     }
 
     public function imageUrl(?string $path): ?string
@@ -113,12 +146,19 @@ class ProductDisplayService
 
     public function variantsForFrontend(Product $product): array
     {
+        $purchaseRegion = $this->currentPurchaseRegion();
+        $localRegion = $this->deliveryRegionService->currentLocalStockRegion();
+
         return $product->variants
             ->where('is_active', true)
-            ->map(function (ProductVariant $variant) use ($product) {
+            ->map(function (ProductVariant $variant) use ($product, $purchaseRegion, $localRegion) {
                 $price = $this->pricingService->getBestPrice($product, $variant, 1, auth()->user());
                 $regular = (float) ($variant->regular_price ?? $product->regular_price ?? $price['base_price']);
-                $stock = $this->availableStock($product, $variant);
+                $availability = $this->availabilityForRegion($product, $variant, $purchaseRegion);
+                $stock = (int) $availability['available_stock'];
+                $canPurchase = $purchaseRegion !== null;
+                $localAvailability = $this->availabilityForRegion($product, $variant, $localRegion, true);
+                $localStock = $localRegion ? (int) $localAvailability['available_stock'] : null;
 
                 return [
                     'id' => $variant->id,
@@ -128,7 +168,11 @@ class ProductDisplayService
                     'stock' => $stock,
                     'final_price' => (float) $price['final_price'],
                     'regular_price' => $regular,
-                    'stock_label' => $this->stockLabel($stock),
+                    'stock_label' => $canPurchase ? $this->stockLabel($stock) : $this->purchaseRequiredLabel(),
+                    'stock_warehouse' => $availability['warehouse']?->name,
+                    'delivery_estimate' => $availability['estimate']['label'] ?? null,
+                    'local_stock' => $localStock,
+                    'local_stock_label' => $localStock !== null ? $this->stockLabel($localStock) : null,
                     'attributes' => $variant->attributeValues->map(fn ($value) => [
                         'attribute' => $value->attribute?->name,
                         'value' => $value->value,
@@ -146,9 +190,59 @@ class ProductDisplayService
             ?: $product->images->sortBy('sort_order')->first()?->image_path;
     }
 
-    private function ecommerceWarehouseId(): ?int
+    private function availability(Product $product, ?ProductVariant $variant): array
     {
-        return Warehouse::query()->where('code', 'ECOM')->where('is_active', true)->value('id')
-            ?: Warehouse::query()->where('is_active', true)->value('id');
+        return $this->availabilityForRegion($product, $variant, $this->currentPurchaseRegion());
+    }
+
+    private function availabilityForRegion(Product $product, ?ProductVariant $variant, ?string $region, bool $localOnly = false): array
+    {
+        if (! $region) {
+            return $this->emptyAvailability();
+        }
+
+        if (! $variant && $product->product_type === 'variable') {
+            $availability = $product->variants
+                ->where('is_active', true)
+                ->map(fn (ProductVariant $item) => $this->availabilityForRegion($product, $item, $region, $localOnly))
+                ->sortByDesc('available_stock')
+                ->first()
+                ?? $this->emptyAvailability();
+
+            return $availability;
+        }
+
+        $availability = $this->stockAllocationService->productAvailability($product->id, $variant?->id, $region);
+
+        return $localOnly && ($availability['is_fallback'] ?? false)
+            ? $this->emptyAvailability()
+            : $availability;
+    }
+
+    private function emptyAvailability(): array
+    {
+        return [
+            'available_stock' => 0,
+            'warehouse' => null,
+            'location' => null,
+            'estimate' => null,
+            'is_fallback' => false,
+        ];
+    }
+
+    private function currentPurchaseRegion(): ?string
+    {
+        if (! auth()->check()) {
+            return null;
+        }
+
+        $region = $this->deliveryRegionService->currentRegion(auth()->user());
+
+        return $region && array_key_exists($region, $this->deliveryRegionService->regions()) ? $region : null;
+    }
+
+    private function purchaseRequiredLabel(): string
+    {
+        return auth()->check() ? 'Configura tu dirección para consultar stock' : 'Inicia sesión para consultar stock';
     }
 }

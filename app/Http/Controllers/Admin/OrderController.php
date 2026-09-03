@@ -29,13 +29,14 @@ class OrderController extends Controller
 
     public function show(Order $order): View
     {
-        return view('admin.orders.show', ['order' => $order->load(['items.packComponents', 'addresses', 'payments', 'shipment', 'histories.user', 'fulfillment.items', 'cancellations', 'returns'])]);
+        return view('admin.orders.show', ['order' => $order->load(['items.packComponents', 'addresses', 'payments', 'shipment', 'histories.user', 'fulfillments.items', 'cancellations', 'returns'])]);
     }
 
     public function status(Request $request, Order $order, OrderService $service): RedirectResponse
     {
         $data = $request->validate(['order_status' => ['required', 'string'], 'notes' => ['nullable', 'string']]);
         $service->updateOrderStatus($order, $data['order_status'], $data['notes'] ?? null);
+
         return back()->with('success', 'Estado de pedido actualizado.');
     }
 
@@ -43,6 +44,7 @@ class OrderController extends Controller
     {
         $data = $request->validate(['payment_status' => ['required', 'string'], 'notes' => ['nullable', 'string']]);
         $service->updatePaymentStatus($order, $data['payment_status'], $data['notes'] ?? null);
+
         return back()->with('success', 'Estado de pago actualizado.');
     }
 }

@@ -12,7 +12,7 @@
             <div class="col-md-3"><label class="form-label">Contacto</label><input name="contact_name" class="form-control" value="{{ old('contact_name', $customer->display_name) }}" required></div>
             <div class="col-md-3"><label class="form-label">Telefono</label><input name="phone" class="form-control" value="{{ old('phone', $customer->phone) }}" required></div>
             <div class="col-md-3"><label class="form-label">Pais</label><input name="country" class="form-control" value="{{ old('country', 'Chile') }}" required></div>
-            <div class="col-md-3"><label class="form-label">Region</label><input name="region" class="form-control" value="{{ old('region') }}" required></div>
+            <div class="col-md-3"><label class="form-label" for="region">Región</label><x-region-select required /></div>
             <div class="col-md-3"><label class="form-label">Provincia</label><input name="province" class="form-control" value="{{ old('province') }}"></div>
             <div class="col-md-3"><label class="form-label">Comuna</label><input name="commune" class="form-control" value="{{ old('commune') }}" required></div>
             <div class="col-md-4"><label class="form-label">Ciudad</label><input name="city" class="form-control" value="{{ old('city') }}" required></div>

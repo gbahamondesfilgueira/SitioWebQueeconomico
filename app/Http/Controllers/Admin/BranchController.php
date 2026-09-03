@@ -6,19 +6,34 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Services\AuditLogger;
+use App\Services\DeliveryRegionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class BranchController extends Controller
 {
-    public function index() { return view('admin.branches.index', ['branches' => Branch::query()->with('company')->latest()->paginate(20)]); }
-    public function create() { return view('admin.branches.create', ['branch' => new Branch(), 'companies' => Company::query()->orderBy('name')->get()]); }
-    public function edit(Branch $branch) { return view('admin.branches.edit', ['branch' => $branch, 'companies' => Company::query()->orderBy('name')->get()]); }
+    public function __construct(private DeliveryRegionService $deliveryRegions) {}
+
+    public function index()
+    {
+        return view('admin.branches.index', ['branches' => Branch::query()->with('company')->latest()->paginate(20)]);
+    }
+
+    public function create()
+    {
+        return view('admin.branches.create', ['branch' => new Branch, 'companies' => Company::query()->orderBy('name')->get()]);
+    }
+
+    public function edit(Branch $branch)
+    {
+        return view('admin.branches.edit', ['branch' => $branch, 'companies' => Company::query()->orderBy('name')->get()]);
+    }
 
     public function store(Request $request)
     {
         $branch = Branch::query()->create($this->validated($request));
         AuditLogger::record('created', 'branches', "Sucursal {$branch->name} creada.");
+
         return redirect()->route('admin.branches.index')->with('success', 'Sucursal creada.');
     }
 
@@ -26,17 +41,22 @@ class BranchController extends Controller
     {
         $branch->update($this->validated($request, $branch));
         AuditLogger::record('updated', 'branches', "Sucursal {$branch->name} editada.");
+
         return redirect()->route('admin.branches.index')->with('success', 'Sucursal actualizada.');
     }
 
     private function validated(Request $request, ?Branch $branch = null): array
     {
+        if ($request->filled('region')) {
+            $request->merge(['region' => $this->deliveryRegions->normalize($request->input('region'))]);
+        }
+
         return $request->validate([
             'company_id' => ['nullable', 'exists:companies,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50', Rule::unique('branches', 'code')->ignore($branch)],
             'address' => ['nullable', 'string', 'max:255'],
-            'region' => ['nullable', 'string', 'max:100'],
+            'region' => ['nullable', Rule::in(array_keys($this->deliveryRegions->regions()))],
             'commune' => ['nullable', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],

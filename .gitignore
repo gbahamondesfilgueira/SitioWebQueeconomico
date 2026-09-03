@@ -14,5 +14,8 @@
 
 /public/hot
 
+# Paquetes generados para publicar en el hosting
+/deploy-update/
+
 npm-debug.log
 yarn-error.log

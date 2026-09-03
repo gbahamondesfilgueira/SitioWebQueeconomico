@@ -22,6 +22,7 @@ class InventoryService
         $this->validateReferences($warehouseId, $productId, $variantId, $locationId);
 
         return StockLevel::query()->firstOrCreate([
+            'source_key' => StockLevel::sourceKey($warehouseId, $locationId, $productId, $variantId),
             'warehouse_id' => $warehouseId,
             'warehouse_location_id' => $locationId,
             'product_id' => $productId,
@@ -35,9 +36,20 @@ class InventoryService
 
     public function getAvailableStock(int $warehouseId, int $productId, ?int $variantId = null, ?int $locationId = null): int
     {
-        $level = $this->getStockLevel($warehouseId, $productId, $variantId, $locationId);
+        if ($locationId !== null) {
+            return $this->getStockLevel($warehouseId, $productId, $variantId, $locationId)->available_stock;
+        }
 
-        return $level->available_stock;
+        return (int) StockLevel::query()
+            ->where('warehouse_id', $warehouseId)
+            ->where('product_id', $productId)
+            ->where('product_variant_id', $variantId)
+            ->where(function ($query) {
+                $query->whereNull('warehouse_location_id')
+                    ->orWhereHas('location', fn ($location) => $location->where('is_active', true)->where('is_sellable', true));
+            })
+            ->get()
+            ->max('available_stock');
     }
 
     public function increaseStock(int $warehouseId, int $productId, ?int $variantId, ?int $locationId, float $quantity, string $movementType, ?string $notes = null, ?string $referenceType = null, ?int $referenceId = null): StockLevel
@@ -45,10 +57,12 @@ class InventoryService
         return DB::transaction(function () use ($warehouseId, $productId, $variantId, $locationId, $quantity, $movementType, $notes, $referenceType, $referenceId) {
             $quantity = $this->normalizeQuantity($quantity);
             $level = $this->getStockLevel($warehouseId, $productId, $variantId, $locationId);
+            $level = StockLevel::query()->whereKey($level->id)->lockForUpdate()->firstOrFail();
             $previous = (float) $level->physical_stock;
             $level->physical_stock = $previous + $quantity;
             $level->save();
             $this->createMovement($warehouseId, $productId, $variantId, $locationId, $movementType, $quantity, $previous, (float) $level->physical_stock, $referenceType, $referenceId, $notes);
+
             return $level;
         });
     }
@@ -58,6 +72,7 @@ class InventoryService
         return DB::transaction(function () use ($warehouseId, $productId, $variantId, $locationId, $quantity, $movementType, $notes, $referenceType, $referenceId) {
             $quantity = $this->normalizeQuantity($quantity);
             $level = $this->getStockLevel($warehouseId, $productId, $variantId, $locationId);
+            $level = StockLevel::query()->whereKey($level->id)->lockForUpdate()->firstOrFail();
             if ($level->available_stock < $quantity) {
                 throw ValidationException::withMessages(['quantity' => 'Stock disponible insuficiente.']);
             }
@@ -65,6 +80,7 @@ class InventoryService
             $level->physical_stock = $previous - $quantity;
             $level->save();
             $this->createMovement($warehouseId, $productId, $variantId, $locationId, $movementType, $quantity, $previous, (float) $level->physical_stock, $referenceType, $referenceId, $notes);
+
             return $level;
         });
     }
@@ -73,39 +89,42 @@ class InventoryService
     {
         return DB::transaction(function () use ($warehouseId, $productId, $variantId, $quantity, $referenceType, $referenceId, $expiresAt, $locationId) {
             $quantity = $this->normalizeQuantity($quantity);
-            $locationId ??= $this->findAvailableLocationId($warehouseId, $productId, $variantId, $quantity);
-            $level = $this->getStockLevel($warehouseId, $productId, $variantId, $locationId);
+            $level = $this->findAvailableLevel($warehouseId, $productId, $variantId, $quantity, $locationId);
+
+            if (! $level) {
+                throw ValidationException::withMessages(['quantity' => 'Stock disponible insuficiente para reservar.']);
+            }
+
+            return $this->createReservationForLevel($level, $quantity, $referenceType, $referenceId, $expiresAt);
+        });
+    }
+
+    public function reserveStockLevel(int $stockLevelId, float $quantity, ?string $referenceType = null, ?int $referenceId = null, $expiresAt = null): StockReservation
+    {
+        return DB::transaction(function () use ($stockLevelId, $quantity, $referenceType, $referenceId, $expiresAt) {
+            $quantity = $this->normalizeQuantity($quantity);
+            $level = StockLevel::query()->with(['warehouse', 'location'])->whereKey($stockLevelId)->lockForUpdate()->firstOrFail();
+            $this->validateReferences($level->warehouse_id, $level->product_id, $level->product_variant_id, $level->warehouse_location_id);
+
+            if ($level->location && ! $level->location->is_sellable) {
+                throw ValidationException::withMessages(['quantity' => 'La ubicación seleccionada no está habilitada para venta.']);
+            }
             if ($level->available_stock < $quantity) {
                 throw ValidationException::withMessages(['quantity' => 'Stock disponible insuficiente para reservar.']);
             }
-            $previous = (float) $level->physical_stock;
-            $level->reserved_stock = (float) $level->reserved_stock + $quantity;
-            $level->save();
-            $reservation = StockReservation::query()->create([
-                'warehouse_id' => $warehouseId,
-                'warehouse_location_id' => $locationId,
-                'product_id' => $productId,
-                'product_variant_id' => $variantId,
-                'quantity' => $quantity,
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-                'expires_at' => $expiresAt,
-                'status' => 'active',
-                'user_id' => Auth::id(),
-            ]);
-            $this->createMovement($warehouseId, $productId, $variantId, $locationId, 'reservation', $quantity, $previous, $previous, $referenceType, $referenceId, 'Reserva de stock');
-            AuditLogger::record('created', 'stock_reservations', "Reserva creada #{$reservation->id}");
-            return $reservation;
+
+            return $this->createReservationForLevel($level, $quantity, $referenceType, $referenceId, $expiresAt);
         });
     }
 
     public function releaseReservation(StockReservation $reservation): void
     {
         DB::transaction(function () use ($reservation): void {
+            $reservation = StockReservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
             if ($reservation->status !== 'active') {
                 throw ValidationException::withMessages(['reservation' => 'La reserva no está activa.']);
             }
-            $level = $this->getStockLevel($reservation->warehouse_id, $reservation->product_id, $reservation->product_variant_id, $reservation->warehouse_location_id);
+            $level = $this->lockedReservationLevel($reservation);
             $level->reserved_stock = max(0, (float) $level->reserved_stock - (float) $reservation->quantity);
             $level->save();
             $reservation->update(['status' => 'released']);
@@ -117,10 +136,11 @@ class InventoryService
     public function consumeReservation(StockReservation $reservation): void
     {
         DB::transaction(function () use ($reservation): void {
+            $reservation = StockReservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
             if ($reservation->status !== 'active') {
                 throw ValidationException::withMessages(['reservation' => 'La reserva no está activa.']);
             }
-            $level = $this->getStockLevel($reservation->warehouse_id, $reservation->product_id, $reservation->product_variant_id, $reservation->warehouse_location_id);
+            $level = $this->lockedReservationLevel($reservation);
             $previous = (float) $level->physical_stock;
             $level->reserved_stock = max(0, (float) $level->reserved_stock - (float) $reservation->quantity);
             $level->physical_stock = $previous - (float) $reservation->quantity;
@@ -203,10 +223,18 @@ class InventoryService
 
     private function validateReferences(int $warehouseId, int $productId, ?int $variantId, ?int $locationId): void
     {
-        if (! Warehouse::query()->whereKey($warehouseId)->where('is_active', true)->exists()) throw ValidationException::withMessages(['warehouse_id' => 'Bodega inactiva o no encontrada.']);
-        if (! Product::query()->whereKey($productId)->where('is_active', true)->exists()) throw ValidationException::withMessages(['product_id' => 'Producto inactivo o no encontrado.']);
-        if ($variantId && ! ProductVariant::query()->whereKey($variantId)->where('product_id', $productId)->where('is_active', true)->exists()) throw ValidationException::withMessages(['product_variant_id' => 'Variante inválida o inactiva.']);
-        if ($locationId && ! WarehouseLocation::query()->whereKey($locationId)->where('warehouse_id', $warehouseId)->where('is_active', true)->exists()) throw ValidationException::withMessages(['warehouse_location_id' => 'Ubicación inválida para la bodega.']);
+        if (! Warehouse::query()->whereKey($warehouseId)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['warehouse_id' => 'Bodega inactiva o no encontrada.']);
+        }
+        if (! Product::query()->whereKey($productId)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['product_id' => 'Producto inactivo o no encontrado.']);
+        }
+        if ($variantId && ! ProductVariant::query()->whereKey($variantId)->where('product_id', $productId)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['product_variant_id' => 'Variante inválida o inactiva.']);
+        }
+        if ($locationId && ! WarehouseLocation::query()->whereKey($locationId)->where('warehouse_id', $warehouseId)->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages(['warehouse_location_id' => 'Ubicación inválida para la bodega.']);
+        }
     }
 
     private function normalizeQuantity(float $quantity): int
@@ -218,17 +246,59 @@ class InventoryService
         return (int) $quantity;
     }
 
-    private function findAvailableLocationId(int $warehouseId, int $productId, ?int $variantId, int $quantity): ?int
+    private function findAvailableLevel(int $warehouseId, int $productId, ?int $variantId, int $quantity, ?int $locationId): ?StockLevel
     {
-        $level = StockLevel::query()
+        return StockLevel::query()
+            ->with('location')
             ->where('warehouse_id', $warehouseId)
             ->where('product_id', $productId)
             ->where('product_variant_id', $variantId)
+            ->when($locationId, fn ($query) => $query->where('warehouse_location_id', $locationId))
             ->whereRaw('(physical_stock - reserved_stock) >= ?', [$quantity])
+            ->where(function ($query) {
+                $query->whereNull('warehouse_location_id')
+                    ->orWhereHas('location', fn ($location) => $location->where('is_active', true)->where('is_sellable', true));
+            })
             ->orderByRaw('warehouse_location_id is null')
+            ->orderByRaw('(physical_stock - reserved_stock) desc')
             ->orderBy('warehouse_location_id')
+            ->lockForUpdate()
             ->first();
+    }
 
-        return $level?->warehouse_location_id;
+    private function createReservationForLevel(StockLevel $level, int $quantity, ?string $referenceType, ?int $referenceId, $expiresAt): StockReservation
+    {
+        $previous = (float) $level->physical_stock;
+        $level->reserved_stock = (float) $level->reserved_stock + $quantity;
+        $level->save();
+        $reservation = StockReservation::query()->create([
+            'warehouse_id' => $level->warehouse_id,
+            'warehouse_location_id' => $level->warehouse_location_id,
+            'product_id' => $level->product_id,
+            'product_variant_id' => $level->product_variant_id,
+            'quantity' => $quantity,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'expires_at' => $expiresAt,
+            'status' => 'active',
+            'user_id' => Auth::id(),
+        ]);
+        $this->createMovement($level->warehouse_id, $level->product_id, $level->product_variant_id, $level->warehouse_location_id, 'reservation', $quantity, $previous, $previous, $referenceType, $referenceId, 'Reserva de stock');
+        AuditLogger::record('created', 'stock_reservations', "Reserva creada #{$reservation->id}");
+
+        return $reservation;
+    }
+
+    private function lockedReservationLevel(StockReservation $reservation): StockLevel
+    {
+        return StockLevel::query()
+            ->where('source_key', StockLevel::sourceKey(
+                $reservation->warehouse_id,
+                $reservation->warehouse_location_id,
+                $reservation->product_id,
+                $reservation->product_variant_id,
+            ))
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 }

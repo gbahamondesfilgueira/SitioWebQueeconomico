@@ -24,6 +24,8 @@ class WarehouseFactory extends Factory
             'phone' => null,
             'email' => fake()->safeEmail(),
             'is_active' => true,
+            'is_central' => false,
+            'fulfillment_priority' => 100,
         ];
     }
 }

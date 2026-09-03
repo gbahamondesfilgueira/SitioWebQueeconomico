@@ -49,8 +49,8 @@
             : ltrim($primary->image_path, '/')
     ) }}"
     alt="{{ $product->name }}"
-    width="52"
-    height="52"
+    width="50"
+    height="50"
     class="rounded object-fit-cover"
 >
                                 @else

@@ -31,7 +31,7 @@ class ShippingSeeder extends Seeder
                 ],
             );
 
-            foreach ([['Envío estándar', 'standard', 'standard', 2, 5], ['Envío express', 'express', 'express', 1, 2], ['Retiro en tienda', 'pickup', 'pickup', 0, 1]] as [$serviceName, $code, $type, $min, $max]) {
+            foreach ([['Envío estándar', 'standard', 'standard', 1, 3], ['Envío express', 'express', 'express', 1, 2], ['Retiro en tienda', 'pickup', 'pickup', 0, 1]] as [$serviceName, $code, $type, $min, $max]) {
                 ShippingService::query()->updateOrCreate(
                     ['shipping_carrier_id' => $carrier->id, 'code' => $code],
                     ['name' => $serviceName, 'service_type' => $type, 'estimated_days_min' => $min, 'estimated_days_max' => $max, 'is_active' => true],

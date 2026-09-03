@@ -39,7 +39,25 @@
                     <span class="badge {{ $display['stock_class'] }}" data-product-stock-badge>{{ $display['stock_label'] }}</span>
                     @if($product->is_featured)<span class="badge text-bg-warning">Destacado</span>@endif
                 </div>
+                @if($display['show_local_stock'] ?? false)
+                    <div class="alert alert-info py-2 mb-3">
+                        <strong>Stock cerca de ti ({{ $display['local_stock_region'] }}):</strong>
+                        <span class="badge {{ $display['local_stock_class'] }}" data-product-local-stock-badge>{{ $display['local_stock_label'] }}</span>
+                        @if($display['local_stock_warehouse'])<div class="small">Bodega local: {{ $display['local_stock_warehouse'] }}.</div>@endif
+                        @auth
+                            <div class="small">La reserva y el despacho siguen usando la dirección predeterminada de tu cuenta.</div>
+                        @else
+                            <div class="small">Inicia sesión y confirma tu dirección para comprar.</div>
+                        @endauth
+                    </div>
+                @endif
                 <x-store.price :display="$display" />
+                @if($display['delivery_estimate'] ?? null)
+                    <div class="alert alert-light border mt-3 mb-2">
+                        <strong>Entrega estimada:</strong> {{ $display['delivery_estimate'] }}
+                        @if($display['stock_warehouse'] ?? null)<div class="small text-secondary">Stock asignado desde {{ $display['stock_warehouse'] }}.</div>@endif
+                    </div>
+                @endif
                 @if($product->sale_ends_at && $display['discount_percentage'] > 0)
                     <div class="small text-danger mt-1">Oferta hasta {{ $product->sale_ends_at->format('d/m/Y H:i') }}</div>
                 @endif
@@ -48,24 +66,30 @@
                     <x-store.variant-selector :variants="$display['variants']" />
                 </div>
 
-                <form method="POST" action="{{ route('store.cart.add') }}" class="mb-3" data-cart-add-form data-product-purchase-form>
-                    @csrf
-                    <input type="hidden" name="item_type" value="product">
-                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                    @if($product->product_type === 'variable')
-                        <select name="product_variant_id" class="form-select mb-2" required data-product-variant-select>
-                            @foreach($display['variants'] as $variant)
-                                <option value="{{ $variant['id'] }}" data-stock="{{ $variant['stock'] }}" data-stock-label="{{ $variant['stock_label'] }}" @disabled($variant['stock'] < 1)>
-                                    {{ $variant['name'] }} - ${{ number_format($variant['final_price'], 0, ',', '.') }} - {{ $variant['stock_label'] }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @endif
-                    <div class="input-group">
-                        <input type="number" name="quantity" class="form-control" value="1" min="1" step="1">
-                        <button class="btn btn-dark btn-lg" data-product-add-button @disabled($display['stock'] <= 0)>Agregar al carrito</button>
-                    </div>
-                </form>
+                @if($display['can_purchase'])
+                    <form method="POST" action="{{ route('store.cart.add') }}" class="mb-3" data-cart-add-form data-product-purchase-form>
+                        @csrf
+                        <input type="hidden" name="item_type" value="product">
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                        @if($product->product_type === 'variable')
+                            <select name="product_variant_id" class="form-select mb-2" required data-product-variant-select>
+                                @foreach($display['variants'] as $variant)
+                                    <option value="{{ $variant['id'] }}" data-stock="{{ $variant['stock'] }}" data-stock-label="{{ $variant['stock_label'] }}" data-local-stock="{{ $variant['local_stock'] }}" data-local-stock-label="{{ $variant['local_stock_label'] }}" @disabled($variant['stock'] < 1)>
+                                        {{ $variant['name'] }} - ${{ number_format($variant['final_price'], 0, ',', '.') }} - {{ $variant['stock_label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
+                        <div class="input-group">
+                            <input type="number" name="quantity" class="form-control" value="1" min="1" step="1">
+                            <button class="btn btn-dark btn-lg" data-product-add-button @disabled($display['stock'] <= 0)>Agregar al carrito</button>
+                        </div>
+                    </form>
+                @elseif(auth()->check())
+                    <a class="btn btn-dark btn-lg mb-3" href="{{ route('account.addresses') }}">Configurar dirección de despacho</a>
+                @else
+                    <button class="btn btn-dark btn-lg mb-3" type="button" data-bs-toggle="modal" data-bs-target="#authModal">Iniciar sesión para comprar</button>
+                @endif
 
                 <dl class="row small">
                     <dt class="col-4">SKU</dt><dd class="col-8">{{ $product->sku ?: '-' }}</dd>

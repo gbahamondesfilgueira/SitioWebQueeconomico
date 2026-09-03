@@ -10,25 +10,31 @@ use App\Models\Product;
 use App\Models\ProductPack;
 use App\Models\ProductVariant;
 use App\Models\StockReservation;
-use App\Models\Warehouse;
 use App\Models\User;
+use App\Models\Warehouse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CartService
 {
     public const RESERVATION_MINUTES = 30;
+
     public const SHIPPING_ESTIMATE = 3990;
+
     public const TAX_RATE = 0.19;
 
     public function __construct(
         private PricingService $pricingService,
         private InventoryService $inventoryService,
+        private StockAllocationService $stockAllocationService,
+        private DeliveryRegionService $deliveryRegionService,
     ) {}
 
     public function getOrCreateCart(?User $user = null, ?string $sessionId = null): CartSession
     {
         $sessionId ??= session()->getId();
+        $accountRegion = $user ? $this->deliveryRegionService->currentRegion($user) : null;
 
         $cart = CartSession::query()
             ->where('status', 'active')
@@ -41,8 +47,13 @@ class CartService
                 'user_id' => $user?->id,
                 'session_id' => $user ? null : $sessionId,
                 'status' => 'active',
+                'destination_region_code' => $accountRegion,
                 'expires_at' => now()->addMinutes(self::RESERVATION_MINUTES),
             ]);
+        } elseif ($user && $accountRegion && $cart->destination_region_code !== $accountRegion) {
+            $cart = $cart->items()->exists()
+                ? $this->reallocateForRegion($cart, $accountRegion)
+                : tap($cart)->update(['destination_region_code' => $accountRegion]);
         }
 
         return $cart->load(['items.product.images', 'items.variant', 'items.pack.items.product', 'coupons.coupon', 'shippingMethod', 'paymentMethod', 'addresses']);
@@ -86,7 +97,7 @@ class CartService
             if (! $pack->isCurrentlyActive() || $pack->items->isEmpty()) {
                 throw ValidationException::withMessages(['pack' => 'Pack no disponible.']);
             }
-            if ($pack->getAvailableStock($this->defaultWarehouseId()) < $quantity) {
+            if (! $this->stockAllocationService->findPackAllocations($pack, $quantity, $cart->destination_region_code)) {
                 throw ValidationException::withMessages(['quantity' => 'Stock insuficiente para el pack.']);
             }
 
@@ -114,7 +125,7 @@ class CartService
                 $cartItem->save();
                 $this->refreshReservation($cartItem);
             } else {
-                if ($cartItem->pack->getAvailableStock($this->defaultWarehouseId()) < $quantity) {
+                if (! $this->stockAllocationService->findPackAllocations($cartItem->pack, $quantity, $cartItem->cart->destination_region_code)) {
                     throw ValidationException::withMessages(['quantity' => 'Stock insuficiente para el pack.']);
                 }
                 $this->pricePackItem($cartItem, $cartItem->pack);
@@ -123,6 +134,7 @@ class CartService
             }
             $this->recalculateCart($cartItem->cart);
             AuditLogger::record('updated', 'cart', "Cantidad actualizada item #{$cartItem->id}");
+
             return $cartItem->refresh();
         });
     }
@@ -221,6 +233,56 @@ class CartService
         }
     }
 
+    public function reallocateForRegion(CartSession $cart, string $region): CartSession
+    {
+        return DB::transaction(function () use ($cart, $region) {
+            $cart = CartSession::query()->whereKey($cart->id)->lockForUpdate()->firstOrFail();
+            $this->assertActiveCart($cart);
+            $region = $this->deliveryRegionService->normalize($region);
+
+            $this->releaseReservations($cart);
+            $cart->update(['destination_region_code' => $region]);
+
+            foreach ($cart->items()->with(['product', 'variant', 'pack.items'])->get() as $item) {
+                $item->unsetRelation('reservation');
+                if ($item->item_type === 'pack') {
+                    $this->refreshPackReservations($item);
+                } else {
+                    $this->refreshReservation($item);
+                }
+            }
+
+            $cart->shippingMethod()->delete();
+
+            return $cart->refresh();
+        });
+    }
+
+    public function deliveryEstimate(CartSession $cart): array
+    {
+        $warehouses = $this->fulfillmentWarehouses($cart);
+
+        if ($warehouses->isEmpty()) {
+            $central = $this->deliveryRegionService->warehouseCandidates($cart->destination_region_code)->first();
+            $warehouses = $central ? collect([$central]) : collect();
+        }
+
+        return $this->deliveryRegionService->deliveryEstimate($cart->destination_region_code, $warehouses);
+    }
+
+    public function fulfillmentWarehouses(CartSession $cart): Collection
+    {
+        $itemIds = $cart->items()->pluck('id');
+
+        return Warehouse::query()
+            ->whereIn('id', StockReservation::query()
+                ->where('reference_type', CartItem::class)
+                ->whereIn('reference_id', $itemIds)
+                ->whereIn('status', ['active', 'consumed'])
+                ->select('warehouse_id'))
+            ->get();
+    }
+
     public function expireOldCarts(): int
     {
         $count = 0;
@@ -234,6 +296,7 @@ class CartService
                 });
             }
         });
+
         return $count;
     }
 
@@ -295,10 +358,20 @@ class CartService
             $this->inventoryService->releaseReservation($item->reservation);
         }
 
-        $reservation = $this->inventoryService->reserveStock(
-            $this->defaultWarehouseId(),
+        $allocation = $this->stockAllocationService->findProductAllocation(
             $item->product_id,
             $item->product_variant_id,
+            (int) $item->quantity,
+            $item->cart->destination_region_code,
+            true,
+        );
+
+        if (! $allocation) {
+            throw ValidationException::withMessages(['quantity' => 'Stock insuficiente en la bodega regional y en la bodega central.']);
+        }
+
+        $reservation = $this->inventoryService->reserveStockLevel(
+            $allocation['stock_level_id'],
             (float) $item->quantity,
             CartItem::class,
             $item->id,
@@ -313,12 +386,21 @@ class CartService
         $this->releasePackReservations($item);
         $item->pack->loadMissing('items');
 
-        foreach ($item->pack->items as $packItem) {
-            $this->inventoryService->reserveStock(
-                $this->defaultWarehouseId(),
-                $packItem->product_id,
-                $packItem->product_variant_id,
-                (float) $packItem->quantity * (float) $item->quantity,
+        $allocations = $this->stockAllocationService->findPackAllocations(
+            $item->pack,
+            (int) $item->quantity,
+            $item->cart->destination_region_code,
+            true,
+        );
+
+        if (! $allocations) {
+            throw ValidationException::withMessages(['quantity' => 'Stock insuficiente para armar el pack en una sola bodega.']);
+        }
+
+        foreach ($allocations as $allocation) {
+            $this->inventoryService->reserveStockLevel(
+                $allocation['stock_level_id'],
+                (float) $allocation['required_quantity'],
                 CartItem::class,
                 $item->id,
                 now()->addMinutes(self::RESERVATION_MINUTES),
@@ -351,22 +433,11 @@ class CartService
 
         if (! $result['valid']) {
             $cartCoupon->delete();
+
             return;
         }
 
         $cartCoupon->update(['discount_amount' => $result['discount_amount'], 'applied_at' => now()]);
-    }
-
-    private function defaultWarehouseId(): int
-    {
-        $warehouse = Warehouse::query()->where('code', 'ECOM')->where('is_active', true)->first()
-            ?? Warehouse::query()->where('is_active', true)->first();
-
-        if (! $warehouse) {
-            throw ValidationException::withMessages(['warehouse' => 'No existe bodega activa para reservar stock.']);
-        }
-
-        return $warehouse->id;
     }
 
     private function assertActiveCart(CartSession $cart): void
